@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using SocketClient;
 
 namespace DebugSocketSolution
 {
@@ -9,6 +10,8 @@ namespace DebugSocketSolution
     {
         static void Main(string[] args)
         {
+            var client = new Client();
+            client.StartClient();
         }
     }
 }
