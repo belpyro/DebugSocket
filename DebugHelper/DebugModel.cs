@@ -42,7 +42,7 @@ namespace DebugHelper
                 {
                     client.Connect(IPAddress.Parse("127.0.0.1"), 11000);
 
-                    var request = new DataRequest("FlightGlobals", Commands.GetType);
+                    var request = new DataRequest(name, Commands.GetType);
 
                     using (var mStream = new MemoryStream())
                     {
@@ -52,9 +52,9 @@ namespace DebugHelper
                         client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
 
                         //get response
-                        mStream.Flush();
+                        //mStream.Flush();
 
-                        var buff = new byte[20048];
+                        var buff = new byte[56000];
 
                         client.GetStream().Read(buff, 0, buff.Length);
 

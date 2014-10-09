@@ -53,6 +53,18 @@
     <Reference Include="Boo.Lang">
       <HintPath>D:\KSP_win\KSP_Data\Managed\Boo.Lang.dll</HintPath>
     </Reference>
+    <Reference Include="GalaSoft.MvvmLight">
+      <HintPath>..\DebugSocketSolution\packages\MvvmLightLibs.5.0.0.0\lib\net45\GalaSoft.MvvmLight.dll</HintPath>
+    </Reference>
+    <Reference Include="GalaSoft.MvvmLight.Extras">
+      <HintPath>..\DebugSocketSolution\packages\MvvmLightLibs.5.0.0.0\lib\net45\GalaSoft.MvvmLight.Extras.dll</HintPath>
+    </Reference>
+    <Reference Include="GalaSoft.MvvmLight.Platform">
+      <HintPath>..\DebugSocketSolution\packages\MvvmLightLibs.5.0.0.0\lib\net45\GalaSoft.MvvmLight.Platform.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Practices.ServiceLocation">
+      <HintPath>..\DebugSocketSolution\packages\CommonServiceLocator.1.3\lib\portable-net4+sl5+netcore45+wpa81+wp8\Microsoft.Practices.ServiceLocation.dll</HintPath>
+    </Reference>
     <Reference Include="Mono.Cecil, Version=0.9.5.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>D:\KSP_win\KSP_Data\Managed\Mono.Cecil.dll</HintPath>
@@ -74,6 +86,9 @@
     </Reference>
     <Reference Include="System.Windows.Controls.Layout.Toolkit">
       <HintPath>..\DebugSocketSolution\packages\WPFToolkit.3.5.50211.1\lib\System.Windows.Controls.Layout.Toolkit.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows.Interactivity, Version=4.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\DebugSocketSolution\packages\MvvmLightLibs.5.0.0.0\lib\net45\System.Windows.Interactivity.dll</HintPath>
     </Reference>
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml" />
@@ -129,6 +144,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
