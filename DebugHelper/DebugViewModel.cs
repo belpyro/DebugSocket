@@ -10,6 +10,7 @@ namespace DebugHelper
     using System.Windows.Input;
 
     using DebugHelper.Annotations;
+    using DebugHelper.Wrappers;
 
     using GalaSoft.MvvmLight.Command;
 
@@ -33,7 +34,13 @@ namespace DebugHelper
             var result = DebugModel.Instance.Get(SelectedType);
             if (result != null && !result.HasError)
             {
-                ReturnedType = result.Data;
+                ReturnedType = new TypeWrapper
+                                   {
+                                       Fields = (result.Data as Type).GetFields(),
+                                       Properties = (result.Data as Type).GetProperties(),
+                                       Name = (result.Data as Type).FullName
+                                   };
+
                 this.OnPropertyChanged("ReturnedType");
             }
         }
@@ -42,7 +49,7 @@ namespace DebugHelper
 
         public string SelectedType { get; set; }
         
-        public object ReturnedType { get; set; }
+        public TypeWrapper ReturnedType { get; set; }
 
         public ICommand GetTypeCommand { get; private set; }
 
