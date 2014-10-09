@@ -10,6 +10,8 @@ using UnityEngine;
 
 namespace SocketServer
 {
+    using System.Collections;
+
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public class Server : MonoBehaviour
     {
@@ -44,27 +46,31 @@ namespace SocketServer
 
                         if (request == null) continue;
 
-                        var t = GetKspType(request.TypeName);
+                        DataResponce responce = null;
 
-                        if (t == null)
+                        switch (request.Command)
                         {
-                            var responce = new DataResponce(true, null);
-                            
-                            using (var mStream = new MemoryStream())
-                            {
-                                formatter.Serialize(mStream, responce);
-
-                                client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
-                            }
-
-                            continue;
+                            case Commands.GetType:
+                                var t = GetKspType(request.TypeName);
+                                if (t != null) { responce = new DataResponce(false, t); }
+                                break;
+                            case Commands.GetTypes:
+                                var types = GetAllTypes();
+                                responce = new DataResponce(false, types);
+                                break;
+                            case Commands.GetField:
+                                break;
+                            case Commands.GetProperty:
+                                break;
+                            case Commands.Set:
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException();
                         }
 
                         using (var mStream = new MemoryStream())
                         {
-                            var obj = new DataResponce(false, t);
-
-                            formatter.Serialize(mStream, obj);
+                            formatter.Serialize(mStream, responce ?? new DataResponce(true, null));
 
                             client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
                         }
@@ -74,6 +80,7 @@ namespace SocketServer
             catch (Exception ex)
             {
                 Debug.LogException(ex);
+                _listener.Stop();
             }
             finally
             {
@@ -82,6 +89,11 @@ namespace SocketServer
                     _listener.Stop();
                 }
             }
+        }
+
+        private object GetAllTypes()
+        {
+            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).Select(x => x.FullName).ToList();
         }
 
         private DataRequest GetDataRequest(byte[] data)

@@ -23,7 +23,7 @@ namespace SocketClient
                 var formatter = new BinaryFormatter();
                 using (var mStream = new MemoryStream())
                 {
-                    var data = new DataRequest("FlightGlobals", Commands.Get);
+                    var data = new DataRequest("FlightGlobals", Commands.GetType);
                     formatter.Serialize(mStream, data);
 
                     client.GetStream().Write(mStream.ToArray(), 0, (int) mStream.Length);
