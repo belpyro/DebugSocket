@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using SocketCommon;
+using SocketCommon.Wrappers;
 using UnityEngine;
 
 namespace SocketServer
@@ -15,6 +16,8 @@ namespace SocketServer
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public class Server : MonoBehaviour
     {
+        private ManualResetEvent _manualReset = new ManualResetEvent(false);
+        private ManualResetEvent _manualReadReset = new ManualResetEvent(false);
         private readonly object o = new object();
         private TcpListener _listener = null;
 
@@ -36,6 +39,11 @@ namespace SocketServer
 
                 while (true)
                 {
+                    //_manualReset.Reset();
+
+                    //_listener.BeginAcceptTcpClient(ClientAccepted, _listener);
+
+                    //_manualReset.WaitOne();
                     using (var client = _listener.AcceptTcpClient())
                     {
                         var buff = new byte[1024];
@@ -51,12 +59,26 @@ namespace SocketServer
                         switch (request.Command)
                         {
                             case Commands.GetType:
-                                var t = GetKspType(request.TypeName);
-                                if (t != null) { responce = new DataResponce(false, t); }
+                                try
+                                {
+                                    var t = GetKspType(request.TypeName);
+                                    if (t != null) { responce = new DataResponce(false, t); }
+                                }
+                                catch (Exception e)
+                                {
+                                    responce = new DataResponce(true, e);
+                                }
                                 break;
                             case Commands.GetTypes:
-                                var types = GetAllTypes();
-                                responce = new DataResponce(false, types);
+                                try
+                                {
+                                    var types = GetAllTypes();
+                                    responce = new DataResponce(false, types);
+                                }
+                                catch (Exception e)
+                                {
+                                    responce = new DataResponce(true, e);
+                                }
                                 break;
                             case Commands.GetField:
                                 break;
@@ -70,7 +92,7 @@ namespace SocketServer
 
                         using (var mStream = new MemoryStream())
                         {
-                            formatter.Serialize(mStream, responce ?? new DataResponce(true, null));
+                            formatter.Serialize(mStream, responce ?? new DataResponce(true, new object()));
 
                             client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
                         }
@@ -91,9 +113,43 @@ namespace SocketServer
             }
         }
 
+        private void ClientAccepted(IAsyncResult ar)
+        {
+            _manualReadReset.Reset();
+
+            var server = ar.AsyncState as TcpListener;
+
+            var client = server.EndAcceptTcpClient(ar);
+
+            var buff = new byte[1024];
+
+            client.GetStream().BeginRead(buff, 0, buff.Length, ClientReaded, client);
+
+            _manualReadReset.WaitOne();
+
+
+        }
+
+        private void ClientReaded(IAsyncResult ar)
+        {
+            var client = ar.AsyncState as TcpClient;
+
+            if (client == null) return;
+
+            client.GetStream().EndRead(ar);
+
+            _manualReadReset.Set();
+        }
+
         private object GetAllTypes()
         {
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).Select(x => x.FullName).ToList();
+            return AppDomain.CurrentDomain.GetAssemblies().Select(x => new AssemblyWrapper()
+            {
+                Location = x.Location,
+                Name = x.FullName,
+                Types = x.GetTypes().Select(y => y.FullName).ToList(),
+            }).ToList();
+            //SelectMany(x => x.GetTypes()).Select(x => x.FullName).ToList();
         }
 
         private DataRequest GetDataRequest(byte[] data)

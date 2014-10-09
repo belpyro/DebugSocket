@@ -97,14 +97,20 @@ namespace DebugHelper
                         //get response
                         //mStream.Flush();
 
-                        var buff = new byte[900000];
+                        var buff = new byte[1024];
 
                         // ReSharper disable once ConditionIsAlwaysTrueOrFalse
 
-                        int index = client.GetStream().Read(buff, 0, buff.Length);
+                        var realBuff = new List<byte>();
+
+                        while ((client.GetStream().Read(buff, 0, buff.Length)) > 0)
+                        {
+                           realBuff.AddRange(buff);
+                        }
+                        
 
 
-                        using (var dsStream = new MemoryStream(buff))
+                        using (var dsStream = new MemoryStream(realBuff.ToArray()))
                         {
                             var obj = _formatter.Deserialize(dsStream);
                             return obj as DataResponce;
