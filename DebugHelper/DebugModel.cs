@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Xml.Serialization;
 
 namespace DebugHelper
 {
@@ -16,6 +18,7 @@ namespace DebugHelper
     public class DebugModel
     {
         private BinaryFormatter _formatter = new BinaryFormatter();
+        private XmlSerializer _serializer = new XmlSerializer(typeof(DataResponce));
 
         private DebugModel() { }
 
@@ -61,7 +64,7 @@ namespace DebugHelper
                         using (var dsStream = new MemoryStream(buff))
                         {
                             var obj = _formatter.Deserialize(dsStream);
-                            return obj as DataResponce;                            
+                            return obj as DataResponce;
                         }
 
                     }
@@ -69,7 +72,7 @@ namespace DebugHelper
                 }
                 catch (Exception ex)
                 {
-                    throw;
+                    return new DataResponce(true, ex);
                 }
             }
         }
@@ -87,16 +90,19 @@ namespace DebugHelper
                     using (var mStream = new MemoryStream())
                     {
                         _formatter.Serialize(mStream, request);
-                        
+
                         //send request
                         client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
 
                         //get response
                         //mStream.Flush();
-                        
-                        var buff = new byte[560000];
-                        
-                        client.GetStream().Read(buff, 0, buff.Length);
+
+                        var buff = new byte[900000];
+
+                        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
+
+                        int index = client.GetStream().Read(buff, 0, buff.Length);
+
 
                         using (var dsStream = new MemoryStream(buff))
                         {

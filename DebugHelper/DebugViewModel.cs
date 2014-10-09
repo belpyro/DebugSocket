@@ -10,8 +10,6 @@ namespace DebugHelper
     using System.Windows.Input;
 
     using DebugHelper.Annotations;
-    using DebugHelper.Wrappers;
-
     using GalaSoft.MvvmLight.Command;
 
     using SocketCommon;
