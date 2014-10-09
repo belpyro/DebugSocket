@@ -7,3 +7,5 @@ DebugSocketSolution/SocketClient/bin/
 DebugHelper/obj/
 DebugSocketSolution/obj/
 DebugHelper/bin/
+*.DotSettings
+DebugSocketSolution/packages/
