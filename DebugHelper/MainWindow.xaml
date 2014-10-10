@@ -18,7 +18,18 @@
         
         <controls:AutoCompleteBox x:Name="CompleteBox" ItemsSource="{Binding LoadedTypes}"/>
 
-        <ListBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding LoadedTypes}" SelectedItem="{Binding SelectedType, Mode=TwoWay}"/>
+        <TreeView Grid.Row="1" Grid.Column="0" ItemsSource="{Binding LoadedTypes}">
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate ItemsSource="{Binding Types}">
+                    <TextBlock Text="{Binding Location}"/>
+                    <HierarchicalDataTemplate.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}"></TextBlock>
+                        </DataTemplate>
+                    </HierarchicalDataTemplate.ItemTemplate>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
 
         <Button Content="Get selected type" MaxWidth="100" Grid.Row="2" Grid.Column="1" Command="{Binding GetTypeCommand}"/>
 

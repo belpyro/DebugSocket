@@ -6,11 +6,11 @@ using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using SocketCommon;
+using SocketCommon.Wrappers;
 using UnityEngine;
 
 namespace SocketServer
 {
-    using System.Collections;
 
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public class Server : MonoBehaviour
@@ -51,12 +51,26 @@ namespace SocketServer
                         switch (request.Command)
                         {
                             case Commands.GetType:
-                                var t = GetKspType(request.TypeName);
-                                if (t != null) { responce = new DataResponce(false, t); }
+                                try
+                                {
+                                    var t = GetKspType(request.TypeName);
+                                    if (t != null) { responce = new DataResponce(false, t); }
+                                }
+                                catch (Exception e)
+                                {
+                                    responce = new DataResponce(true, e);
+                                }
                                 break;
                             case Commands.GetTypes:
-                                var types = GetAllTypes();
-                                responce = new DataResponce(false, types);
+                                try
+                                {
+                                    var types = GetAllTypes();
+                                    responce = new DataResponce(false, types);
+                                }
+                                catch (Exception e)
+                                {
+                                    responce = new DataResponce(true, e);
+                                }
                                 break;
                             case Commands.GetField:
                                 break;
@@ -70,7 +84,7 @@ namespace SocketServer
 
                         using (var mStream = new MemoryStream())
                         {
-                            formatter.Serialize(mStream, responce ?? new DataResponce(true, null));
+                            formatter.Serialize(mStream, responce ?? new DataResponce(true, new object()));
 
                             client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
                         }
@@ -91,9 +105,15 @@ namespace SocketServer
             }
         }
 
+
         private object GetAllTypes()
         {
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).Select(x => x.FullName).ToList();
+            return AppDomain.CurrentDomain.GetAssemblies().Select(x => new AssemblyWrapper()
+            {
+                Location = x.Location,
+                Name = x.FullName,
+                Types = x.GetTypes().Select(y => y.FullName).ToList(),
+            }).ToList();
         }
 
         private DataRequest GetDataRequest(byte[] data)

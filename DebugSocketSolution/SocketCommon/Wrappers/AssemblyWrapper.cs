@@ -10,6 +10,6 @@ namespace SocketCommon.Wrappers
 
         public string Name { get; set; }
 
-        public List<string> Types { get; set; }
+        public IEnumerable<string> Types { get; set; }
     }
 }

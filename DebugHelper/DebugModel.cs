@@ -1,9 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Xml.Serialization;
 
 namespace DebugHelper
 {
@@ -11,14 +7,12 @@ namespace DebugHelper
     using System.Net;
     using System.Net.Sockets;
     using System.Runtime.Serialization.Formatters.Binary;
-    using System.Windows.Documents;
 
     using SocketCommon;
 
     public class DebugModel
     {
         private BinaryFormatter _formatter = new BinaryFormatter();
-        private XmlSerializer _serializer = new XmlSerializer(typeof(DataResponce));
 
         private DebugModel() { }
 
@@ -55,13 +49,20 @@ namespace DebugHelper
                         client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
 
                         //get response
-                        //mStream.Flush();
 
-                        var buff = new byte[56000];
+                        var buff = new byte[1024];
 
-                        client.GetStream().Read(buff, 0, buff.Length);
+                        // ReSharper disable once ConditionIsAlwaysTrueOrFalse
 
-                        using (var dsStream = new MemoryStream(buff))
+                        var realBuff = new List<byte>();
+
+                        while ((client.GetStream().Read(buff, 0, buff.Length)) > 0)
+                        {
+                            realBuff.AddRange(buff);
+                        }
+
+
+                        using (var dsStream = new MemoryStream(realBuff.ToArray()))
                         {
                             var obj = _formatter.Deserialize(dsStream);
                             return obj as DataResponce;
@@ -83,6 +84,10 @@ namespace DebugHelper
             {
                 try
                 {
+                    client.ReceiveBufferSize = 900000;
+                    client.SendBufferSize = 900000;
+                    client.ReceiveTimeout = 1000;
+
                     client.Connect(IPAddress.Parse("127.0.0.1"), 11000);
 
                     var request = new DataRequest(null, Commands.GetTypes);
@@ -95,16 +100,20 @@ namespace DebugHelper
                         client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
 
                         //get response
-                        //mStream.Flush();
 
-                        var buff = new byte[900000];
+                        var buff = new byte[client.ReceiveBufferSize];
 
                         // ReSharper disable once ConditionIsAlwaysTrueOrFalse
 
-                        int index = client.GetStream().Read(buff, 0, buff.Length);
+                        var realBuff = new List<byte>();
 
+                        while ((client.GetStream().Read(buff, 0, client.ReceiveBufferSize)) > 0)
+                        {
+                           realBuff.AddRange(buff);
+                        }
+                       
 
-                        using (var dsStream = new MemoryStream(buff))
+                        using (var dsStream = new MemoryStream(realBuff.ToArray()))
                         {
                             var obj = _formatter.Deserialize(dsStream);
                             return obj as DataResponce;

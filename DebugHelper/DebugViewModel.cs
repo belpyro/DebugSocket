@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using SocketCommon.Wrappers;
 
 namespace DebugHelper
 {
@@ -20,10 +21,11 @@ namespace DebugHelper
         {
             GetTypeCommand = new RelayCommand(GetTypeCommandExecute);
 
-            DataResponce result = DebugModel.Instance.GetAll();
+            DataResponce result = DebugModel.Instance.GetAll();//Get("FlightGlobals");
+           
             if (result != null)
             {
-                LoadedTypes = ((IEnumerable<string>)result.Data).OrderBy(x => x);
+                LoadedTypes = (IEnumerable<AssemblyWrapper>) result.Data;
             }
         }
 
@@ -43,7 +45,7 @@ namespace DebugHelper
             }
         }
 
-        public IEnumerable<object> LoadedTypes { get; set; }
+        public IEnumerable<AssemblyWrapper> LoadedTypes { get; set; }
 
         public string SelectedType { get; set; }
         
