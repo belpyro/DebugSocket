@@ -11,13 +11,10 @@ using UnityEngine;
 
 namespace SocketServer
 {
-    using System.Collections;
 
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public class Server : MonoBehaviour
     {
-        private ManualResetEvent _manualReset = new ManualResetEvent(false);
-        private ManualResetEvent _manualReadReset = new ManualResetEvent(false);
         private readonly object o = new object();
         private TcpListener _listener = null;
 
@@ -39,11 +36,6 @@ namespace SocketServer
 
                 while (true)
                 {
-                    //_manualReset.Reset();
-
-                    //_listener.BeginAcceptTcpClient(ClientAccepted, _listener);
-
-                    //_manualReset.WaitOne();
                     using (var client = _listener.AcceptTcpClient())
                     {
                         var buff = new byte[1024];
@@ -113,33 +105,6 @@ namespace SocketServer
             }
         }
 
-        private void ClientAccepted(IAsyncResult ar)
-        {
-            _manualReadReset.Reset();
-
-            var server = ar.AsyncState as TcpListener;
-
-            var client = server.EndAcceptTcpClient(ar);
-
-            var buff = new byte[1024];
-
-            client.GetStream().BeginRead(buff, 0, buff.Length, ClientReaded, client);
-
-            _manualReadReset.WaitOne();
-
-
-        }
-
-        private void ClientReaded(IAsyncResult ar)
-        {
-            var client = ar.AsyncState as TcpClient;
-
-            if (client == null) return;
-
-            client.GetStream().EndRead(ar);
-
-            _manualReadReset.Set();
-        }
 
         private object GetAllTypes()
         {
@@ -149,7 +114,6 @@ namespace SocketServer
                 Name = x.FullName,
                 Types = x.GetTypes().Select(y => y.FullName).ToList(),
             }).ToList();
-            //SelectMany(x => x.GetTypes()).Select(x => x.FullName).ToList();
         }
 
         private DataRequest GetDataRequest(byte[] data)

@@ -5,11 +5,6 @@ namespace SocketCommon
     [Serializable]
     public class DataRequest
     {
-        public DataRequest()
-        {
-            
-        }
-
         public DataRequest(string name, Commands command)
         {
             TypeName = name;

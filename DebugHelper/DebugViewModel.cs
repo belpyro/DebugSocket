@@ -21,7 +21,7 @@ namespace DebugHelper
         {
             GetTypeCommand = new RelayCommand(GetTypeCommandExecute);
 
-            DataResponce result = DebugModel.Instance.GetAll();
+            DataResponce result = DebugModel.Instance.GetAll();//Get("FlightGlobals");
            
             if (result != null)
             {
