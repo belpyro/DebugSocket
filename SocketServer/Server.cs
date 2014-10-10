@@ -54,8 +54,17 @@ namespace SocketServer
                                 try
                                 {
                                     var t = GetKspType(request.TypeName);
-                                    if (t != null) { responce = new DataResponce(false, t); }
-                                }
+                                    if (t != null)
+                                    {
+                                        var data = new TypeWrapper
+                                                       {
+                                                           Name = t.FullName,
+                                                           Fields = t.GetFields().ToList(),
+                                                           Properties = t.GetProperties().ToList()
+                                                       };
+                                        responce = new DataResponce(false, data);
+                                    }
+                                    }
                                 catch (Exception e)
                                 {
                                     responce = new DataResponce(true, e);
@@ -73,8 +82,9 @@ namespace SocketServer
                                 }
                                 break;
                             case Commands.GetField:
-                                break;
                             case Commands.GetProperty:
+                                var result = this.GetKspData(request);
+                                responce = result != null ? new DataResponce(false, result) : new DataResponce(true, "cannot load ksp type");
                                 break;
                             case Commands.Set:
                                 break;
@@ -105,6 +115,41 @@ namespace SocketServer
             }
         }
 
+        private object GetKspData(DataRequest request)
+        {
+            lock (o)
+            {
+                var t = this.GetKspType(request.TypeName);
+
+                if (t == null) return null;
+
+
+                switch (request.Command)
+                {
+                    case Commands.GetType:
+                        break;
+                    case Commands.GetField:
+                        var f = t.GetField(request.MemberName);
+                        return (f != null && f.IsStatic) ? f.GetValue(null) : new DataResponce(true, "Cannot load field value");
+                        break;
+                    case Commands.GetProperty:
+                        var p = t.GetProperty(request.MemberName);
+                        if (p != null && p.GetGetMethod() == null)
+                        {
+                            return p.GetValue(null, null);
+                        }
+                        break;
+                    case Commands.GetTypes:
+                        break;
+                    case Commands.Set:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                return null; 
+            }
+        }
 
         private object GetAllTypes()
         {

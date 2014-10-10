@@ -7,7 +7,10 @@ using SocketCommon.Wrappers;
 namespace DebugHelper
 {
     using System.ComponentModel;
+    using System.Reflection;
     using System.Runtime.CompilerServices;
+    using System.Windows;
+    using System.Windows.Controls;
     using System.Windows.Input;
 
     using DebugHelper.Annotations;
@@ -15,43 +18,57 @@ namespace DebugHelper
 
     using SocketCommon;
 
-    public class DebugViewModel :INotifyPropertyChanged
+    public class DebugViewModel : INotifyPropertyChanged
     {
         public DebugViewModel()
         {
-            GetTypeCommand = new RelayCommand(GetTypeCommandExecute);
+            SelectionChangedCommand = new RelayCommand<RoutedPropertyChangedEventArgs<object>>(SelectionChangedExecute);
+            DoubleClickCommand = new RelayCommand<MouseButtonEventArgs>(DoubleClickExecute);
 
-            DataResponce result = DebugModel.Instance.GetAll();//Get("FlightGlobals");
-           
-            if (result != null)
+            var result = DebugModel.Instance.GetAll();
+
+            if (result != null && !result.HasError)
             {
-                LoadedTypes = (IEnumerable<AssemblyWrapper>) result.Data;
+                LoadedTypes = (IEnumerable<AssemblyWrapper>)result.Data;
             }
         }
 
-        private void GetTypeCommandExecute()
+        private void DoubleClickExecute(MouseButtonEventArgs obj)
         {
-            var result = DebugModel.Instance.Get(SelectedType);
-            if (result != null && !result.HasError)
-            {
-                ReturnedType = new TypeWrapper
-                                   {
-                                       Fields = (result.Data as Type).GetFields(),
-                                       Properties = (result.Data as Type).GetProperties(),
-                                       Name = (result.Data as Type).FullName
-                                   };
+            var box = obj.Source as ListBox;
+            if (box == null) return;
 
-                this.OnPropertyChanged("ReturnedType");
+            var item = box.SelectedItem as FieldInfo;
+
+            var result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Name, Commands.GetField);
+        }
+
+        private void SelectionChangedExecute(RoutedPropertyChangedEventArgs<object> obj)
+        {
+            if (obj.NewValue == null) return;
+
+            if (obj.NewValue is AssemblyWrapper)
+            {
+                SelectedType = obj.NewValue;
+                return;
             }
+
+            var result = DebugModel.Instance.Get(obj.NewValue.ToString());
+            if (result == null || result.HasError) { return; }
+            this.ReturnedType = (TypeWrapper)result.Data;
+
+            this.OnPropertyChanged("ReturnedType");
         }
 
         public IEnumerable<AssemblyWrapper> LoadedTypes { get; set; }
 
-        public string SelectedType { get; set; }
-        
+        public object SelectedType { get; set; }
+
         public TypeWrapper ReturnedType { get; set; }
 
-        public ICommand GetTypeCommand { get; private set; }
+        public ICommand DoubleClickCommand { get; private set; }
+        
+        public ICommand SelectionChangedCommand { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
