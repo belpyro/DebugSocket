@@ -37,14 +37,27 @@ namespace DebugHelper
         {
             if (obj == null) return;
 
-            var item = obj as FieldInfoWrapper;
+            DataResponce result;
 
-            var result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Data.Name, Commands.GetField);
-
-            if (!result.HasError)
+            if (obj is FieldInfoWrapper)
             {
-                item.Value = result.Data;
-                this.OnPropertyChanged("ReturnedType");
+                var item = obj as FieldInfoWrapper;
+                result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Data.Name, Commands.GetField);
+                
+                if (!result.HasError)
+                {
+                    item.Value = result.Data;
+                }
+            }
+            else
+            {
+                var item = obj as PropertyInfoWrapper;
+                result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Data.Name, Commands.GetProperty);
+                
+                if (!result.HasError)
+                {
+                    item.Value = result.Data;
+                }
             }
         }
 

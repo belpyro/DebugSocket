@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
+using System.Xml.Serialization;
 using SocketCommon;
 using SocketCommon.Wrappers;
 using UnityEngine;
@@ -100,17 +101,17 @@ namespace SocketServer
 
                         using (var mStream = new MemoryStream())
                         {
-                            formatter.Serialize(mStream, responce ?? new DataResponce(true, "Error serialization responce"));
+                            try
+                            {
+                                formatter.Serialize(mStream, responce ?? new DataResponce(true, "Error serialization responce"));
+                            }
+                            catch (Exception ex)
+                            {
+                                var xml = new XmlSerializer(typeof(DataResponce));
+                                xml.Serialize(mStream, responce);
+                            }
 
-                            if (mStream.Length <= 0)
-                            {
-                                formatter.Serialize(mStream, new DataResponce(true, "Cannot get value"));
-                                client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
-                            }
-                            else
-                            {
-                                client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
-                            }
+                            client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
 
                         }
                     }
@@ -150,7 +151,7 @@ namespace SocketServer
                             return (f != null && f.IsStatic) ? f.GetValue(null) : new DataResponce(true, "Cannot load field value");
                         case Commands.GetProperty:
                             var p = t.GetProperty(request.MemberName);
-                            if (p != null && p.GetGetMethod() == null)
+                            if (p != null && p.GetGetMethod().IsStatic)
                             {
                                 return p.GetValue(null, null);
                             }

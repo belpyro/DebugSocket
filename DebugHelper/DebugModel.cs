@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 
 namespace DebugHelper
 {
@@ -68,8 +69,17 @@ namespace DebugHelper
 
                         using (var dsStream = new MemoryStream(realBuff.ToArray()))
                         {
-                            var obj = _formatter.Deserialize(dsStream);
-                            return obj as DataResponce;
+                            try
+                            {
+                                var obj = _formatter.Deserialize(dsStream);
+                                return obj as DataResponce;
+                            }
+                            catch (Exception)
+                            {
+
+                                var xml = new XmlSerializer(typeof (DataResponce));
+                                return xml.Deserialize(dsStream) as DataResponce;
+                            }
                         }
 
                     }
