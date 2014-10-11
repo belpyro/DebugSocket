@@ -6,11 +6,11 @@ using System.Net.Sockets;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using SocketCommon;
+using SocketCommon.Wrappers;
 using UnityEngine;
 
 namespace SocketServer
 {
-    using System.Collections;
 
     [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public class Server : MonoBehaviour
@@ -38,7 +38,7 @@ namespace SocketServer
                 {
                     using (var client = _listener.AcceptTcpClient())
                     {
-                        var buff = new byte[1024];
+                        var buff = new byte[9600];
 
                         client.GetStream().Read(buff, 0, buff.Length);
 
@@ -51,16 +51,46 @@ namespace SocketServer
                         switch (request.Command)
                         {
                             case Commands.GetType:
-                                var t = GetKspType(request.TypeName);
-                                if (t != null) { responce = new DataResponce(false, t); }
+                                try
+                                {
+                                    var t = GetKspType(request.TypeName);
+                                    if (t != null)
+                                    {
+                                        var data = new TypeWrapper
+                                                       {
+                                                           Name = t.FullName,
+                                                           Fields = t.GetFields().Select(x => new FieldInfoWrapper()
+                                                           {
+                                                               Data = x,
+                                                           }).ToList(),
+                                                           Properties = t.GetProperties().Select(x => new PropertyInfoWrapper()
+                                                           {
+                                                               Data = x,
+                                                           }).ToList()
+                                                       };
+                                        responce = new DataResponce(false, data);
+                                    }
+                                }
+                                catch (Exception e)
+                                {
+                                    responce = new DataResponce(true, e);
+                                }
                                 break;
                             case Commands.GetTypes:
-                                var types = GetAllTypes();
-                                responce = new DataResponce(false, types);
+                                try
+                                {
+                                    var types = GetAllTypes();
+                                    responce = new DataResponce(false, types);
+                                }
+                                catch (Exception e)
+                                {
+                                    responce = new DataResponce(true, e);
+                                }
                                 break;
                             case Commands.GetField:
-                                break;
                             case Commands.GetProperty:
+                                var result = this.GetKspData(request);
+                                responce = result != null ? new DataResponce(false, result) : new DataResponce(true, "cannot load ksp type");
                                 break;
                             case Commands.Set:
                                 break;
@@ -70,9 +100,18 @@ namespace SocketServer
 
                         using (var mStream = new MemoryStream())
                         {
-                            formatter.Serialize(mStream, responce ?? new DataResponce(true, null));
+                            formatter.Serialize(mStream, responce ?? new DataResponce(true, "Error serialization responce"));
 
-                            client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
+                            if (mStream.Length <= 0)
+                            {
+                                formatter.Serialize(mStream, new DataResponce(true, "Cannot get value"));
+                                client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
+                            }
+                            else
+                            {
+                                client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
+                            }
+
                         }
                     }
                 }
@@ -91,9 +130,57 @@ namespace SocketServer
             }
         }
 
+        private object GetKspData(DataRequest request)
+        {
+            lock (o)
+            {
+                try
+                {
+                    var t = this.GetKspType(request.TypeName);
+
+                    if (t == null) return null;
+
+
+                    switch (request.Command)
+                    {
+                        case Commands.GetType:
+                            break;
+                        case Commands.GetField:
+                            var f = t.GetField(request.MemberName);
+                            return (f != null && f.IsStatic) ? f.GetValue(null) : new DataResponce(true, "Cannot load field value");
+                        case Commands.GetProperty:
+                            var p = t.GetProperty(request.MemberName);
+                            if (p != null && p.GetGetMethod() == null)
+                            {
+                                return p.GetValue(null, null);
+                            }
+                            break;
+                        case Commands.GetTypes:
+                            break;
+                        case Commands.Set:
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+
+                    return null;
+                }
+                catch (Exception ex)
+                {
+
+                    return new DataResponce(true, ex);
+                }
+            }
+        }
+
         private object GetAllTypes()
         {
-            return AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes()).Select(x => x.FullName).ToList();
+            return AppDomain.CurrentDomain.GetAssemblies().Select(x => new AssemblyWrapper()
+            {
+                Location = x.Location,
+                Name = x.FullName,
+                Types = x.GetTypes().Select(y => y.FullName).OrderBy(m => m).ToList(),
+            }).ToList();
         }
 
         private DataRequest GetDataRequest(byte[] data)

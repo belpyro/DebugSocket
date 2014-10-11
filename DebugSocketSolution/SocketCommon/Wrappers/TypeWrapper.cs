@@ -1,18 +1,19 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reflection;
+using SocketCommon.Wrappers;
 
 namespace SocketCommon
 {
+    using System;
+
+    [Serializable]
     public class TypeWrapper
     {
-        [Category("Fields")]
-        public IEnumerable<FieldInfo> Fields { get; set; }
+        public IEnumerable<FieldInfoWrapper> Fields { get; set; }
 
-        [Category("Properties")]
-        public IEnumerable<PropertyInfo> Properties { get; set; }
+        public IEnumerable<PropertyInfoWrapper> Properties { get; set; }
 
-        [Category("Common")]
         public string Name { get; set; }
     }
 }

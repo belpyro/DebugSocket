@@ -9,4 +9,5 @@ DebugSocketSolution/obj/
 DebugHelper/bin/
 *.DotSettings
 DebugSocketSolution/packages/
+DebugSocketSolution/CecilTest/bin/
 DebugSocketSolution/CecilTest/obj/
