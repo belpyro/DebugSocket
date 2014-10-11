@@ -23,7 +23,7 @@ namespace DebugHelper
         public DebugViewModel()
         {
             SelectionChangedCommand = new RelayCommand<RoutedPropertyChangedEventArgs<object>>(SelectionChangedExecute);
-            DoubleClickCommand = new RelayCommand<MouseButtonEventArgs>(DoubleClickExecute);
+            DoubleClickCommand = new RelayCommand<object>(DoubleClickExecute);
 
             var result = DebugModel.Instance.GetAll();
 
@@ -33,14 +33,19 @@ namespace DebugHelper
             }
         }
 
-        private void DoubleClickExecute(MouseButtonEventArgs obj)
+        private void DoubleClickExecute(object obj)
         {
-            var box = obj.Source as ListBox;
-            if (box == null) return;
+            if (obj == null) return;
 
-            var item = box.SelectedItem as FieldInfo;
+            var item = obj as FieldInfoWrapper;
 
-            var result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Name, Commands.GetField);
+            var result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Data.Name, Commands.GetField);
+
+            if (!result.HasError)
+            {
+                item.Value = result.Data;
+                this.OnPropertyChanged("ReturnedType");
+            }
         }
 
         private void SelectionChangedExecute(RoutedPropertyChangedEventArgs<object> obj)

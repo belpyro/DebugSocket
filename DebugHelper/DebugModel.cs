@@ -179,7 +179,7 @@ namespace DebugHelper
                 }
                 catch (Exception ex)
                 {
-                    throw;
+                    return new DataResponce(true, ex);
                 }
             }
         }

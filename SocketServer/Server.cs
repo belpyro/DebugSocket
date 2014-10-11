@@ -38,7 +38,7 @@ namespace SocketServer
                 {
                     using (var client = _listener.AcceptTcpClient())
                     {
-                        var buff = new byte[1024];
+                        var buff = new byte[9600];
 
                         client.GetStream().Read(buff, 0, buff.Length);
 
@@ -59,12 +59,18 @@ namespace SocketServer
                                         var data = new TypeWrapper
                                                        {
                                                            Name = t.FullName,
-                                                           Fields = t.GetFields().ToList(),
-                                                           Properties = t.GetProperties().ToList()
+                                                           Fields = t.GetFields().Select(x => new FieldInfoWrapper()
+                                                           {
+                                                               Data = x,
+                                                           }).ToList(),
+                                                           Properties = t.GetProperties().Select(x => new PropertyInfoWrapper()
+                                                           {
+                                                               Data = x,
+                                                           }).ToList()
                                                        };
                                         responce = new DataResponce(false, data);
                                     }
-                                    }
+                                }
                                 catch (Exception e)
                                 {
                                     responce = new DataResponce(true, e);
@@ -94,9 +100,18 @@ namespace SocketServer
 
                         using (var mStream = new MemoryStream())
                         {
-                            formatter.Serialize(mStream, responce ?? new DataResponce(true, new object()));
+                            formatter.Serialize(mStream, responce ?? new DataResponce(true, "Error serialization responce"));
 
-                            client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
+                            if (mStream.Length <= 0)
+                            {
+                                formatter.Serialize(mStream, new DataResponce(true, "Cannot get value"));
+                                client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
+                            }
+                            else
+                            {
+                                client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
+                            }
+
                         }
                     }
                 }
@@ -119,35 +134,42 @@ namespace SocketServer
         {
             lock (o)
             {
-                var t = this.GetKspType(request.TypeName);
-
-                if (t == null) return null;
-
-
-                switch (request.Command)
+                try
                 {
-                    case Commands.GetType:
-                        break;
-                    case Commands.GetField:
-                        var f = t.GetField(request.MemberName);
-                        return (f != null && f.IsStatic) ? f.GetValue(null) : new DataResponce(true, "Cannot load field value");
-                        break;
-                    case Commands.GetProperty:
-                        var p = t.GetProperty(request.MemberName);
-                        if (p != null && p.GetGetMethod() == null)
-                        {
-                            return p.GetValue(null, null);
-                        }
-                        break;
-                    case Commands.GetTypes:
-                        break;
-                    case Commands.Set:
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                    var t = this.GetKspType(request.TypeName);
 
-                return null; 
+                    if (t == null) return null;
+
+
+                    switch (request.Command)
+                    {
+                        case Commands.GetType:
+                            break;
+                        case Commands.GetField:
+                            var f = t.GetField(request.MemberName);
+                            return (f != null && f.IsStatic) ? f.GetValue(null) : new DataResponce(true, "Cannot load field value");
+                        case Commands.GetProperty:
+                            var p = t.GetProperty(request.MemberName);
+                            if (p != null && p.GetGetMethod() == null)
+                            {
+                                return p.GetValue(null, null);
+                            }
+                            break;
+                        case Commands.GetTypes:
+                            break;
+                        case Commands.Set:
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+
+                    return null;
+                }
+                catch (Exception ex)
+                {
+
+                    return new DataResponce(true, ex);
+                }
             }
         }
 
@@ -157,7 +179,7 @@ namespace SocketServer
             {
                 Location = x.Location,
                 Name = x.FullName,
-                Types = x.GetTypes().Select(y => y.FullName).ToList(),
+                Types = x.GetTypes().Select(y => y.FullName).OrderBy(m => m).ToList(),
             }).ToList();
         }
 
