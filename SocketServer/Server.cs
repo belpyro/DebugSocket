@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using System.Xml.Serialization;
@@ -18,6 +20,7 @@ namespace SocketServer
     {
         private readonly object o = new object();
         private TcpListener _listener = null;
+        private Dictionary<Type, Type> _types = new Dictionary<Type, Type>();
 
         public void Start()
         {
@@ -107,8 +110,7 @@ namespace SocketServer
                             }
                             catch (Exception ex)
                             {
-                                var xml = new XmlSerializer(typeof(DataResponce));
-                                xml.Serialize(mStream, responce);
+                                formatter.Serialize(mStream, new DataResponce(true, ex));
                             }
 
                             client.GetStream().Write(mStream.ToArray(), 0, (int)mStream.Length);
@@ -148,7 +150,15 @@ namespace SocketServer
                             break;
                         case Commands.GetField:
                             var f = t.GetField(request.MemberName);
-                            return (f != null && f.IsStatic) ? f.GetValue(null) : new DataResponce(true, "Cannot load field value");
+
+                            if (f == null)
+                                return new DataResponce(true, string.Format("Field {0} not exist", request.MemberName));
+
+                            if (_types.ContainsKey(f.FieldType))
+                            {
+                                return Populate(f.FieldType);
+                            }
+                            return (f.IsStatic) ? f.GetValue(null) : new DataResponce(true, "Cannot load field value");
                         case Commands.GetProperty:
                             var p = t.GetProperty(request.MemberName);
                             if (p != null && p.GetGetMethod().IsStatic)
@@ -176,12 +186,41 @@ namespace SocketServer
 
         private object GetAllTypes()
         {
-            return AppDomain.CurrentDomain.GetAssemblies().Select(x => new AssemblyWrapper()
+            lock (o)
             {
-                Location = x.Location,
-                Name = x.FullName,
-                Types = x.GetTypes().Select(y => y.FullName).OrderBy(m => m).ToList(),
-            }).ToList();
+                _types.Clear();
+
+                var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+                try
+                {
+                    var mTypes = assemblies.Where(x => x.FullName.Contains("UnityEngine") || x.FullName.Contains("Assembly-CSharp"))
+                              .SelectMany(x => x.GetTypes()).ToList();
+
+                    foreach (var mType in mTypes)
+                    {
+                        if (string.IsNullOrEmpty(mType.Name) || mType.Name.Contains('+')) continue;
+
+                        var objtype = GetKspType(string.Format("{0}_Wrapper", mType.Name));
+
+                        //if (objtype == null) continue;
+
+                        //_types.Add(mType, objtype);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return new DataResponce(true, ex);
+                }
+
+
+                return assemblies.Where(x => x.FullName.Contains("UnityEngine") || x.FullName.Contains("Assembly-CSharp")).Select(x => new AssemblyWrapper()
+                {
+                    Location = x.Location,
+                    Name = x.FullName,
+                    Types = x.GetTypes().Select(y => y.FullName).Where(m => !m.Contains('+') && m.Length > 2).OrderBy(m => m).ToList(),
+                }).ToList();
+            }
         }
 
         private DataRequest GetDataRequest(byte[] data)
@@ -211,6 +250,37 @@ namespace SocketServer
             {
                 _listener.Stop();
             }
+        }
+
+
+        private object Populate(Type t)
+        {
+            if (t.IsSerializable || !t.IsClass) return null;
+
+            var objType = _types[t];
+
+            var obj = Activator.CreateInstance(objType);
+
+            if (obj == null) return null;
+
+            foreach (var field in t.GetFields(BindingFlags.Public | BindingFlags.Static))
+            {
+                var objField = obj.GetType().GetField(string.Format("_{0}_wrapped", field.Name));
+
+                if (objField == null) continue;
+
+                if (!field.FieldType.IsSerializable && field.FieldType.IsClass)
+                {
+                    objField.SetValue(obj, Populate(field.FieldType));
+
+                    continue;
+                }
+
+                objField.SetValue(obj, field.GetValue(null));
+            }
+
+
+            return obj;
         }
     }
 }

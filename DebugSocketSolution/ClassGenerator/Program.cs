@@ -1,16 +1,9 @@
 ﻿using System;
 using System.CodeDom;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using KSP.IO;
 using Microsoft.CSharp;
-using FileAccess = System.IO.FileAccess;
-using FileMode = System.IO.FileMode;
-using FileStream = System.IO.FileStream;
 
 namespace ClassGenerator
 {
@@ -18,7 +11,7 @@ namespace ClassGenerator
     {
         static void Main(string[] args)
         {
-            var types = AppDomain.CurrentDomain.GetAssemblies().Where(x => x.FullName.Contains("Unity") || x.FullName.Contains("Assembly-CSharp"))
+            var types = AppDomain.CurrentDomain.GetAssemblies().Where(x => x.FullName.Contains("UnityEngine") || x.FullName.Contains("Assembly-CSharp"))
                 .SelectMany(x => x.GetTypes())
                 .Where(x => (x.IsClass || x.IsValueType) && !x.IsEnum && !x.IsPrimitive).Where(x => !x.FullName.Contains('+'))
                 .Where(x => !x.IsSerializable).Where(x => x.BaseType != typeof(Attribute)).OrderBy(x => x.FullName).ToList();
@@ -41,13 +34,14 @@ namespace ClassGenerator
                 };
 
                 wrapper.CustomAttributes.Add(
-                    new CodeAttributeDeclaration(new CodeTypeReference(typeof (SerializableAttribute))));
+                    new CodeAttributeDeclaration(new CodeTypeReference(typeof(SerializableAttribute))));
 
                 nspace.Types.Add(wrapper);
 
                 foreach (var field in t.GetFields(BindingFlags.Public | BindingFlags.Static))
                 {
-                    if ((field.FieldType.IsClass || field.FieldType.IsValueType) && !field.FieldType.IsPrimitive && field.FieldType != typeof(string))
+                    if ((field.FieldType.IsClass || field.FieldType.IsValueType) && !field.FieldType.IsPrimitive && field.FieldType != typeof(string)
+                        && !field.FieldType.IsSerializable)
                     {
                         var codeField = new CodeMemberField(string.Format("{0}_Wrapper", field.FieldType.Name), string.Format("_{0}_wrapped", field.Name))
                         {
@@ -67,7 +61,7 @@ namespace ClassGenerator
 
                 foreach (var prop in t.GetProperties(BindingFlags.Public | BindingFlags.Instance))
                 {
-                    if ((prop.PropertyType.IsClass || prop.PropertyType.IsValueType) && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string))
+                    if ((prop.PropertyType.IsClass || prop.PropertyType.IsValueType) && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string) && !prop.PropertyType.IsSerializable)
                     {
                         var field = new CodeMemberField(string.Format("{0}_Wrapper", prop.PropertyType.Name),
                             string.Format("_{0}", prop.Name.ToLower()))
@@ -80,12 +74,14 @@ namespace ClassGenerator
                         {
                             Name = prop.Name,
                             Type = field.Type,
-                            Attributes = MemberAttributes.Public
+                            Attributes = MemberAttributes.Public | MemberAttributes.Final
                         };
 
-                        property.SetStatements.Add(new CodeAssignStatement(new CodeFieldReferenceExpression(null, field.Name), new CodePropertySetValueReferenceExpression()));
+                        property.SetStatements.Add(new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), field.Name), new CodePropertySetValueReferenceExpression()));
 
-                        property.GetStatements.Add(new CodeMethodReturnStatement(new CodeFieldReferenceExpression(null, field.Name)));
+                        property.GetStatements.Add(new CodeMethodReturnStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), field.Name)));
+
+                        wrapper.Members.Add(property);
                     }
                     else
                     {
@@ -114,6 +110,8 @@ namespace ClassGenerator
                     continue;
                 }
 
+                //return;
+
             }
 
 
@@ -125,7 +123,7 @@ namespace ClassGenerator
             {
                 Name = name,
                 Type = new CodeTypeReference(type),
-                Attributes = MemberAttributes.Public
+                Attributes = MemberAttributes.Public | MemberAttributes.Final
             };
 
             property.SetStatements.Add(
