@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,31 +8,64 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
-using System.Xml.Serialization;
 using SocketCommon;
+using SocketCommon.Attributes;
 using SocketCommon.Wrappers;
 using UnityEngine;
+using UnityThreading;
 
 namespace SocketServer
 {
 
-    [KSPAddon(KSPAddon.Startup.EveryScene, false)]
+    [KSPAddon(KSPAddon.Startup.Flight, false)]
     public class Server : MonoBehaviour
     {
         private readonly object o = new object();
         private TcpListener _listener = null;
-        private Dictionary<Type, Type> _types = new Dictionary<Type, Type>();
+        private readonly Dictionary<string, TypeDataInfo> _types = new Dictionary<string, TypeDataInfo>();
+        private readonly Dictionary<object, object> _items = new Dictionary<object, object>();
 
         public void Start()
         {
+            //PrepareWrappers();
+
             var t = new Thread(StartServer);
             t.Start();
+        }
+
+        private void PrepareWrappers()
+        {
+            lock (o)
+            {
+                var allTypes = AppDomain.CurrentDomain.GetAssemblies()
+                        .SelectMany(x => x.GetTypes()).ToList();
+
+                var wrappers = allTypes.Where(x => x.Name.EndsWith("_Wrapper")).ToList();
+
+                var types = allTypes.Where(x => !wrappers.Contains(x)).Select(x => x.Name).Distinct().ToList();
+
+                foreach (var kspType in types)
+                {
+                    var wrapper = wrappers.FirstOrDefault(x => x.Name.Equals(string.Format("{0}_Wrapper", kspType)));
+
+                    if (wrapper == null) continue;
+
+                    _types.Add(kspType, new TypeDataInfo()
+                    {
+                        Assembly = wrapper.AssemblyQualifiedName,
+                        FullName = wrapper.Name
+                    });
+                }
+            }
+
         }
 
         private void StartServer()
         {
             try
             {
+                PrepareWrappers();
+
                 _listener = new TcpListener(IPAddress.Parse("127.0.0.1"), 11000);
 
                 _listener.Start();
@@ -57,23 +91,9 @@ namespace SocketServer
                             case Commands.GetType:
                                 try
                                 {
-                                    var t = GetKspType(request.TypeName);
-                                    if (t != null)
-                                    {
-                                        var data = new TypeWrapper
-                                                       {
-                                                           Name = t.FullName,
-                                                           Fields = t.GetFields().Select(x => new FieldInfoWrapper()
-                                                           {
-                                                               Data = x,
-                                                           }).ToList(),
-                                                           Properties = t.GetProperties().Select(x => new PropertyInfoWrapper()
-                                                           {
-                                                               Data = x,
-                                                           }).ToList()
-                                                       };
-                                        responce = new DataResponce(false, data);
-                                    }
+                                    var data = FillTypeData(request.TypeName);
+                                    responce = data != null ? new DataResponce(false, data) : new DataResponce(true, "Cannot populate wrapper");
+                                    _items.Clear();
                                 }
                                 catch (Exception e)
                                 {
@@ -133,6 +153,144 @@ namespace SocketServer
             }
         }
 
+        private object FillTypeData(string type, object obj = null)
+        {
+            Debug.Log(string.Format("Start fill type {0} with obj {1}", type, obj));
+
+            //check wrapper
+            if (!_types.ContainsKey(type)) return null;
+
+            //load wrapper
+
+            var wrapperType = _types[type];
+
+            var loadedType = Type.GetType(wrapperType.Assembly);
+
+            var wrapper = Activator.CreateInstance(loadedType);
+
+            var kspType = GetKspType(type);
+
+            object instance = obj;
+
+            //populate static fields
+
+            #region instance attribute
+
+            var instanceAttribute = loadedType.GetCustomAttributes(typeof(InstanceNameAttribute), true).FirstOrDefault() as InstanceNameAttribute;
+
+            if (instanceAttribute != null && instance == null)
+            {
+                Debug.Log("Attribute has " + instanceAttribute.Name);
+
+                var instanceProp = kspType.GetProperty(instanceAttribute.Name);
+
+                if (instanceProp != null)
+                {
+                    instance = instanceProp.GetValue(null, null);
+                }
+            }
+
+            #endregion
+
+            #region id attribute
+
+            var idAttribute = loadedType.GetCustomAttributes(typeof(UniqIdAttribute), true).FirstOrDefault() as UniqIdAttribute;
+
+            if (idAttribute != null && instance != null)
+            {
+                Debug.Log("Attribute has " + idAttribute.Name);
+
+                MemberInfo instanceProp = kspType.GetMember(idAttribute.Name).FirstOrDefault();
+
+                if (instanceProp != null)
+                {
+                    var uniqId = instanceProp.MemberType == MemberTypes.Property ? (instanceProp as PropertyInfo).GetValue(instance, null) :
+                        (instanceProp as FieldInfo).GetValue(instance);
+
+                    if (_items.ContainsKey(uniqId))
+                    {
+                        Debug.Log("Uniq object was returned");
+                        return _items[uniqId];
+                    }
+
+                    wrapper.GetType().GetField(idAttribute.Name).SetValue(wrapper, uniqId);
+
+                    Debug.Log("Attribute setted " + idAttribute.Name + " " + uniqId);
+
+                    _items.Add(uniqId, wrapper);
+                }
+            }
+
+            #endregion
+
+            var wrapperFields = wrapper.GetType().GetFields();
+
+            var typeFields = kspType.GetFields().Where(x => wrapperFields.Any(m => m.Name.Equals(x.Name))).ToList();
+
+            PopulateStaticFields(wrapper, typeFields);
+
+            //foreach (var fieldInfo in typeFields)
+            //{
+            //    FieldInfo wrapperField = wrapperFields.Single(x => x.Name.Equals(fieldInfo.Name));
+
+            //    //field is class
+            //    if ((fieldInfo.FieldType.IsClass || fieldInfo.FieldType.IsValueType) && !fieldInfo.FieldType.IsPrimitive && fieldInfo.FieldType != typeof(string))
+            //    {
+            //        if (!fieldInfo.IsStatic && instance != null)
+            //        {
+            //            var interfaces = fieldInfo.FieldType.GetInterfaces();
+
+            //            if (interfaces.Any(t => t == typeof(IEnumerable))) continue;
+
+            //            var valueKsp = fieldInfo.GetValue(instance);
+
+            //            Debug.Log(string.Format("Start fill field {0} with value {1}", fieldInfo.Name, valueKsp));
+
+            //            if (valueKsp.GetType().IsSerializable)
+            //            {
+            //                wrapperField.SetValue(wrapper, valueKsp);
+            //                continue;
+            //            }
+
+            //            wrapperField.SetValue(wrapper, FillTypeData(fieldInfo.FieldType.Name, valueKsp));
+
+            //            //continue;
+            //        }
+
+
+            //        //wrapperField.SetValue(wrapper, FillTypeData(fieldInfo.FieldType.Name));
+
+            //    }
+
+            //    //field is primitive
+
+            //    //wrapperField.SetValue(wrapper, fieldInfo.GetValue(instance));
+            //}
+
+
+
+            //populate properties
+
+            return wrapper;
+        }
+
+        private void PopulateStaticFields(object wrapperObj, IEnumerable<FieldInfo> sourceFields)
+        {
+            foreach (var fieldInfo in sourceFields.Where(x => x.IsStatic))
+            {
+
+                if (_types.ContainsKey(fieldInfo.FieldType.Name))
+                {
+                    var wrapper = Activator.CreateInstance(fieldInfo.FieldType);
+                    fieldInfo.SetValue(wrapperObj, wrapper);
+                    continue;
+                }
+
+                var sourceField = wrapperObj.GetType().GetField(fieldInfo.Name);
+                sourceField.SetValue(wrapperObj, fieldInfo.GetValue(null));
+            }
+        }
+
         private object GetKspData(DataRequest request)
         {
             lock (o)
@@ -154,10 +312,10 @@ namespace SocketServer
                             if (f == null)
                                 return new DataResponce(true, string.Format("Field {0} not exist", request.MemberName));
 
-                            if (_types.ContainsKey(f.FieldType))
-                            {
-                                return Populate(f.FieldType);
-                            }
+                            //if (_types.ContainsKey(f.FieldType.Name))
+                            //{
+                            //    return Populate(f.FieldType);
+                            //}
                             return (f.IsStatic) ? f.GetValue(null) : new DataResponce(true, "Cannot load field value");
                         case Commands.GetProperty:
                             var p = t.GetProperty(request.MemberName);
@@ -188,31 +346,7 @@ namespace SocketServer
         {
             lock (o)
             {
-                _types.Clear();
-
                 var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-
-                try
-                {
-                    var mTypes = assemblies.Where(x => x.FullName.Contains("UnityEngine") || x.FullName.Contains("Assembly-CSharp"))
-                              .SelectMany(x => x.GetTypes()).ToList();
-
-                    foreach (var mType in mTypes)
-                    {
-                        if (string.IsNullOrEmpty(mType.Name) || mType.Name.Contains('+')) continue;
-
-                        var objtype = GetKspType(string.Format("{0}_Wrapper", mType.Name));
-
-                        //if (objtype == null) continue;
-
-                        //_types.Add(mType, objtype);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    return new DataResponce(true, ex);
-                }
-
 
                 return assemblies.Where(x => x.FullName.Contains("UnityEngine") || x.FullName.Contains("Assembly-CSharp")).Select(x => new AssemblyWrapper()
                 {
@@ -252,35 +386,5 @@ namespace SocketServer
             }
         }
 
-
-        private object Populate(Type t)
-        {
-            if (t.IsSerializable || !t.IsClass) return null;
-
-            var objType = _types[t];
-
-            var obj = Activator.CreateInstance(objType);
-
-            if (obj == null) return null;
-
-            foreach (var field in t.GetFields(BindingFlags.Public | BindingFlags.Static))
-            {
-                var objField = obj.GetType().GetField(string.Format("_{0}_wrapped", field.Name));
-
-                if (objField == null) continue;
-
-                if (!field.FieldType.IsSerializable && field.FieldType.IsClass)
-                {
-                    objField.SetValue(obj, Populate(field.FieldType));
-
-                    continue;
-                }
-
-                objField.SetValue(obj, field.GetValue(null));
-            }
-
-
-            return obj;
-        }
     }
 }

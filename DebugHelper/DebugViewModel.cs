@@ -71,7 +71,7 @@ namespace DebugHelper
                 return;
             }
 
-            var result = DebugModel.Instance.Get(obj.NewValue.ToString());
+            var result = DebugModel.Instance.Get("FlightGlobals");//obj.NewValue.ToString());
             if (result == null || result.HasError) { return; }
             this.ReturnedType = (TypeWrapper)result.Data;
 

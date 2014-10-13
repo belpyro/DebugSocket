@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using Microsoft.CSharp;
+using SocketCommon.Attributes;
 
 namespace ClassGenerator
 {
@@ -13,7 +14,7 @@ namespace ClassGenerator
         {
             var types = AppDomain.CurrentDomain.GetAssemblies().Where(x => x.FullName.Contains("UnityEngine") || x.FullName.Contains("Assembly-CSharp"))
                 .SelectMany(x => x.GetTypes())
-                .Where(x => (x.IsClass || x.IsValueType) && !x.IsEnum && !x.IsPrimitive).Where(x => !x.FullName.Contains('+'))
+                .Where(x => (x.IsClass || x.IsValueType) && !x.IsEnum && !x.IsPrimitive).Where(x => !x.FullName.Contains('+') && x.Name.Length > 3)
                 .Where(x => !x.IsSerializable).Where(x => x.BaseType != typeof(Attribute)).OrderBy(x => x.FullName).ToList();
 
             //hack for loading assembly
@@ -38,20 +39,26 @@ namespace ClassGenerator
 
                 nspace.Types.Add(wrapper);
 
-                foreach (var field in t.GetFields(BindingFlags.Public | BindingFlags.Static))
+                foreach (var field in t.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
                 {
                     if ((field.FieldType.IsClass || field.FieldType.IsValueType) && !field.FieldType.IsPrimitive && field.FieldType != typeof(string)
                         && !field.FieldType.IsSerializable)
                     {
-                        var codeField = new CodeMemberField(string.Format("{0}_Wrapper", field.FieldType.Name), string.Format("_{0}_wrapped", field.Name))
+                        var codeField = new CodeMemberField(string.Format("{0}_Wrapper", field.FieldType.Name), field.Name)
                         {
                             Attributes = MemberAttributes.Public
                         };
                         wrapper.Members.Add(codeField);
+
+                        if (field.FieldType == t)
+                        {
+                            wrapper.CustomAttributes.Add(
+                                new CodeAttributeDeclaration(new CodeTypeReference(typeof(InstanceNameAttribute)), new CodeAttributeArgument(new CodePrimitiveExpression(field.Name))));
+                        }
                     }
                     else
                     {
-                        var codeField = new CodeMemberField(field.FieldType, string.Format("_{0}_wrapped", field.Name))
+                        var codeField = new CodeMemberField(field.FieldType, field.Name)
                      {
                          Attributes = MemberAttributes.Public
                      };
@@ -59,40 +66,31 @@ namespace ClassGenerator
                     }
                 }
 
-                foreach (var prop in t.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                foreach (var prop in t.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static))
                 {
                     if ((prop.PropertyType.IsClass || prop.PropertyType.IsValueType) && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string) && !prop.PropertyType.IsSerializable)
                     {
                         var field = new CodeMemberField(string.Format("{0}_Wrapper", prop.PropertyType.Name),
-                            string.Format("_{0}", prop.Name.ToLower()))
+                            prop.Name)
                         {
-                            Attributes = MemberAttributes.Private
+                            Attributes = MemberAttributes.Public
                         };
                         wrapper.Members.Add(field);
 
-                        var property = new CodeMemberProperty()
+                        if (prop.PropertyType == t)
                         {
-                            Name = prop.Name,
-                            Type = field.Type,
-                            Attributes = MemberAttributes.Public | MemberAttributes.Final
-                        };
-
-                        property.SetStatements.Add(new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), field.Name), new CodePropertySetValueReferenceExpression()));
-
-                        property.GetStatements.Add(new CodeMethodReturnStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), field.Name)));
-
-                        wrapper.Members.Add(property);
+                            wrapper.CustomAttributes.Add(
+                                new CodeAttributeDeclaration(new CodeTypeReference(typeof(InstanceNameAttribute)), new CodeAttributeArgument(new CodePrimitiveExpression(prop.Name))));
+                        }
                     }
                     else
                     {
-                        var codeField = new CodeMemberField(prop.PropertyType, string.Format("_{0}", prop.Name.ToLower()))
+                        var codeField = new CodeMemberField(prop.PropertyType, prop.Name)
                         {
-                            Attributes = MemberAttributes.Private
+                            Attributes = MemberAttributes.Public
                         };
 
                         wrapper.Members.Add(codeField);
-
-                        wrapper.Members.Add(CreateProperty(string.Format("_{0}", prop.Name.ToLower()), prop.Name, prop.PropertyType));
                     }
 
                 }
@@ -109,8 +107,6 @@ namespace ClassGenerator
                 {
                     continue;
                 }
-
-                //return;
 
             }
 
