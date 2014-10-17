@@ -7,11 +7,11 @@ namespace SocketCommon.Wrappers.Tree
     public class MemberInfoWrapper
     {
         public string Name { get; set; }
-        
+
         public string TypeName { get; set; }
 
-        public IEnumerable<object> Value { get; set; }
+        public List<MemberInfoWrapper> Children { get; set; }
 
-        public MemberType Type { get; set; }
+        public object Value { get; set; }
     }
 }

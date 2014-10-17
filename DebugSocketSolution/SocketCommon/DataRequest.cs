@@ -1,21 +1,13 @@
 ﻿using System;
+using SocketCommon.Wrappers.Tree;
 
 namespace SocketCommon
 {
     [Serializable]
     public class DataRequest
     {
-        public DataRequest(string typeName, Commands command, string member = null)
-        {
-            TypeName = typeName;
-            Command = command;
-            MemberName = member;
-        }
+        public MemberInfoWrapper Info { get; set; }
 
-        public string TypeName { get; private set; }
-        
-        public string MemberName { get; private set; }
-
-        public Commands Command { get; private set; }
+        public Commands Command { get;  set; }
     }
 }

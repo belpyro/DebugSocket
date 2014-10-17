@@ -21,77 +21,26 @@ namespace DebugHelper
 
     public class DebugViewModel : INotifyPropertyChanged
     {
-        public DebugViewModel()
-        {
-            SelectionChangedCommand = new RelayCommand<RoutedPropertyChangedEventArgs<object>>(SelectionChangedExecute);
-            DoubleClickCommand = new RelayCommand<object>(DoubleClickExecute);
-        }
 
         public void LoadKspTypes()
         {
             var result = DebugModel.Instance.GetAll();
 
-            if (result != null && !result.HasError)
-            {
-                LoadedTypes = (IEnumerable<TypeInfoWrapper>)result.Data;
-                if (OnLoaded != null) OnLoaded(this, EventArgs.Empty);
-            }
+            if (result == null || result.HasError) return;
+
+            LoadedTypes = (List<MemberInfoWrapper>)result.Data;
+
+            if (OnLoaded != null) OnLoaded(this, EventArgs.Empty);
         }
 
         public object GetKspValue(MemberInfoWrapper wrapper)
         {
-            DataResponce result = DebugModel.Instance.GetValue(wrapper.TypeName, wrapper.Name,
-                wrapper.Type == MemberType.Field ? Commands.GetField : Commands.GetProperty);
+            DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetValue);
 
             return result.HasError ? null : result.Data;
         }
 
-        private void DoubleClickExecute(object obj)
-        {
-            if (obj == null) return;
-
-            DataResponce result;
-
-            if (obj is FieldInfoWrapper)
-            {
-                var item = obj as FieldInfoWrapper;
-                result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Data.Name, Commands.GetField);
-
-                if (!result.HasError)
-                {
-                    item.Value = result.Data;
-                }
-            }
-            else
-            {
-                var item = obj as PropertyInfoWrapper;
-                result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Data.Name, Commands.GetProperty);
-
-                if (!result.HasError)
-                {
-                    item.Value = result.Data;
-                }
-            }
-        }
-
-        private void SelectionChangedExecute(RoutedPropertyChangedEventArgs<object> obj)
-        {
-            if (obj.NewValue == null) return;
-
-            if (obj.NewValue is AssemblyWrapper)
-            {
-                SelectedType = obj.NewValue;
-                return;
-            }
-
-            var result = DebugModel.Instance.Get("FlightGlobals");//obj.NewValue.ToString());
-            if (result == null || result.HasError) { return; }
-            this.ReturnedType = (TypeWrapper)result.Data;
-
-            this.OnPropertyChanged("ReturnedType");
-        }
-
-        public IEnumerable<TypeInfoWrapper> LoadedTypes { get; set; }
+        public IEnumerable<MemberInfoWrapper> LoadedTypes { get; set; }
 
         public object SelectedType { get; set; }
 

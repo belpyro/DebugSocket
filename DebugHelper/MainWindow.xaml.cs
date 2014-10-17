@@ -31,13 +31,14 @@ namespace DebugHelper
 
         private void ItemExpanded(object sender, RoutedEventArgs e)
         {
+
             var item = e.OriginalSource as TreeViewItem;
 
             if (item == null) return;
 
             var info = item.DataContext as MemberInfoWrapper;
 
-            if (info == null) return;
+            if (info == null || info.Name.Equals(info.TypeName)) return;
 
             var data = model.GetKspValue(info);
         }

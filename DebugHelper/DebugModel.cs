@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Xml.Serialization;
+using SocketCommon.Wrappers.Tree;
 
 namespace DebugHelper
 {
@@ -32,7 +33,7 @@ namespace DebugHelper
             return null;
         }
 
-        public DataResponce GetValue(string typename, string membername, Commands command)
+        public DataResponce GetValue(MemberInfoWrapper wrapper, Commands command)
         {
             using (var client = new TcpClient(AddressFamily.InterNetwork))
             {
@@ -44,7 +45,7 @@ namespace DebugHelper
 
                     client.Connect(IPAddress.Parse("127.0.0.1"), 11000);
 
-                    var request = new DataRequest(typename, command, membername);
+                    var request = new DataRequest() { Command = command, Info = wrapper };
 
                     using (var mStream = new MemoryStream())
                     {
@@ -77,7 +78,7 @@ namespace DebugHelper
                             catch (Exception)
                             {
 
-                                var xml = new XmlSerializer(typeof (DataResponce));
+                                var xml = new XmlSerializer(typeof(DataResponce));
                                 return xml.Deserialize(dsStream) as DataResponce;
                             }
                         }
@@ -90,7 +91,7 @@ namespace DebugHelper
                     return new DataResponce(true, ex);
                 }
             }
-            
+
         }
 
         public DataResponce Get(string name)
@@ -105,7 +106,7 @@ namespace DebugHelper
 
                     client.Connect(IPAddress.Parse("127.0.0.1"), 11000);
 
-                    var request = new DataRequest(name, Commands.GetType);
+                    var request = new DataRequest();
 
                     using (var mStream = new MemoryStream())
                     {
@@ -156,7 +157,7 @@ namespace DebugHelper
 
                     client.Connect(IPAddress.Parse("127.0.0.1"), 11000);
 
-                    var request = new DataRequest(null, Commands.GetTypes);
+                    var request = new DataRequest() { Command = Commands.GetTypes };
 
                     using (var mStream = new MemoryStream())
                     {
@@ -175,9 +176,9 @@ namespace DebugHelper
 
                         while ((client.GetStream().Read(buff, 0, client.ReceiveBufferSize)) > 0)
                         {
-                           realBuff.AddRange(buff);
+                            realBuff.AddRange(buff);
                         }
-                       
+
 
                         using (var dsStream = new MemoryStream(realBuff.ToArray()))
                         {
