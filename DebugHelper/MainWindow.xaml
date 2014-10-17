@@ -5,7 +5,19 @@
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
         xmlns:command="http://www.galasoft.ch/mvvmlight"
+        xmlns:tree="clr-namespace:SocketCommon.Wrappers.Tree;assembly=SocketCommon"
         Title="MainWindow" Height="480" Width="640">
+    <Window.Resources>
+        <HierarchicalDataTemplate DataType="{x:Type tree:TypeInfoWrapper}" ItemsSource="{Binding Members}">
+            <TextBlock Text="{Binding Name}"/>
+        </HierarchicalDataTemplate>
+        <HierarchicalDataTemplate DataType="{x:Type tree:MemberInfoWrapper}" ItemsSource="{Binding Value}">
+            <TextBlock Text="{Binding Name}"/>
+        </HierarchicalDataTemplate>
+        <HierarchicalDataTemplate DataType="{x:Type tree:MemberType}">
+            <TextBlock Text="{Binding}"/>
+        </HierarchicalDataTemplate>
+    </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width=".6*"/>
@@ -18,9 +30,15 @@
             <RowDefinition Height=".5*"/>
         </Grid.RowDefinitions>
 
-        <controls:AutoCompleteBox x:Name="CompleteBox" ItemsSource="{Binding LoadedTypes}" />
+        <controls:AutoCompleteBox x:Name="CompleteBox" ItemsSource="{Binding LoadedTypes}" ValueMemberBinding="{Binding Name}" ValueMemberPath="Name"/>
 
-        <TreeView Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" ItemsSource="{Binding LoadedTypes}">
+        <TreeView Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Name="TypeTree">
+            <TreeViewItem Header="Types">
+                <TreeViewItem Header="Loading..."/>
+            </TreeViewItem>
+        </TreeView>
+        
+        <!--<TreeView Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" ItemsSource="{Binding LoadedTypes}">
             <i:Interaction.Triggers>
                 <i:EventTrigger EventName="SelectedItemChanged">
                     <command:EventToCommand Command="{Binding SelectionChangedCommand}" PassEventArgsToCommand="True"/>
@@ -36,19 +54,20 @@
                     </HierarchicalDataTemplate.ItemTemplate>
                 </HierarchicalDataTemplate>
             </TreeView.ItemTemplate>
-        </TreeView>
+        </TreeView>-->
 
-        <Button Width="16" Height="16" Grid.Column="1" Command="{Binding ElementName=FieldBox,Path=DataContext.DoubleClickCommand}" CommandParameter="{Binding}">
+        <Button Width="16" Height="16" Grid.Row="0" Grid.Column="1" Command="{Binding ElementName=FieldBox,Path=DataContext.DoubleClickCommand}" CommandParameter="{Binding}">
             <Image Source="Images/refresh.png"/>
         </Button>
-        
-        <ListBox Grid.Column="1" Grid.Row="1" x:Name="FieldBox" ItemsSource="{Binding ReturnedType.Fields}" Grid.RowSpan="1">
-            <!--<i:Interaction.Triggers>
+
+        <!--<ListBox Grid.Column="1" Grid.Row="1" x:Name="FieldBox" ItemsSource="{Binding ElementName=TypeBox, Path=SelectedItem.Members}"
+                 DisplayMemberPath="Name">
+            --><!--<i:Interaction.Triggers>
                 <i:EventTrigger EventName="MouseDoubleClick">
                     <command:EventToCommand Command="{Binding DoubleClickCommand}" PassEventArgsToCommand="True"/>
                 </i:EventTrigger>
             </i:Interaction.Triggers>-->
-            <ListBox.ItemTemplate>
+            <!--<ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                         <TextBlock Text="{Binding Data.Name}" Margin="4">
@@ -67,10 +86,10 @@
                         <TextBlock Margin="4" VerticalAlignment="Center" HorizontalAlignment="Right" Text="{Binding Value}" Foreground="DarkGreen" FontWeight="UltraBold"/>
                     </StackPanel>
                 </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+            </ListBox.ItemTemplate>--><!--
+        </ListBox>-->
 
-        <ListBox Grid.Column="1" x:Name="PropBox"  Grid.Row="2" ItemsSource="{Binding ReturnedType.Properties}">
+        <!--<ListBox Grid.Column="1" x:Name="PropBox"  Grid.Row="2" ItemsSource="{Binding ReturnedType.Properties}">
             <ListBox.ItemTemplate>
                 <DataTemplate>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
@@ -78,11 +97,11 @@
                             <TextBlock.Style>
                                 <Style>
                                     <Setter Property="TextBlock.FontWeight" Value="Bold"></Setter>
-                                    <!--<Style.Triggers>
+                                    --><!--<Style.Triggers>
                                         <DataTrigger Binding="{Binding Data.IsStatic}" Value="True">
                                             <Setter Property="TextBlock.Foreground" Value="DarkRed"/>
                                         </DataTrigger>
-                                    </Style.Triggers>-->
+                                    </Style.Triggers>--><!--
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
@@ -94,7 +113,7 @@
                     </StackPanel>
                 </DataTemplate>
             </ListBox.ItemTemplate>
-        </ListBox>
+        </ListBox>-->
 
         <!--<xctk:PropertyGrid Grid.Column="2" Grid.Row="0" Grid.RowSpan="2" AutoGenerateProperties="True" SelectedObject="{Binding ReturnedType}"/>-->
     </Grid>

@@ -77,6 +77,7 @@
     <Compile Include="Attributes\InstanceNameAttribute.cs" />
     <Compile Include="Attributes\UniqIdAttribute.cs" />
     <Compile Include="Commands.cs" />
+    <Compile Include="Comparers\TypeEqualityComparer.cs" />
     <Compile Include="DataRequest.cs" />
     <Compile Include="DataResponce.cs" />
     <Compile Include="Properties\Annotations.cs" />
@@ -1248,6 +1249,9 @@
     <Compile Include="Wrappers\KSP\XKCDColors_Wrapper.cs" />
     <Compile Include="Wrappers\KSP\YieldInstruction_Wrapper.cs" />
     <Compile Include="Wrappers\PropertyInfoWrapper.cs" />
+    <Compile Include="Wrappers\Tree\MemberInfoWrapper.cs" />
+    <Compile Include="Wrappers\Tree\MemberType.cs" />
+    <Compile Include="Wrappers\Tree\TypeInfoWrapper.cs" />
     <Compile Include="Wrappers\TypeDataInfo.cs" />
     <Compile Include="Wrappers\TypeWrapper.cs" />
   </ItemGroup>

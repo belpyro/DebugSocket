@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using SocketCommon.Wrappers;
+using SocketCommon.Wrappers.Tree;
 
 namespace DebugHelper
 {
@@ -24,13 +25,25 @@ namespace DebugHelper
         {
             SelectionChangedCommand = new RelayCommand<RoutedPropertyChangedEventArgs<object>>(SelectionChangedExecute);
             DoubleClickCommand = new RelayCommand<object>(DoubleClickExecute);
+        }
 
+        public void LoadKspTypes()
+        {
             var result = DebugModel.Instance.GetAll();
 
             if (result != null && !result.HasError)
             {
-                LoadedTypes = (IEnumerable<AssemblyWrapper>)result.Data;
+                LoadedTypes = (IEnumerable<TypeInfoWrapper>)result.Data;
+                if (OnLoaded != null) OnLoaded(this, EventArgs.Empty);
             }
+        }
+
+        public object GetKspValue(MemberInfoWrapper wrapper)
+        {
+            DataResponce result = DebugModel.Instance.GetValue(wrapper.TypeName, wrapper.Name,
+                wrapper.Type == MemberType.Field ? Commands.GetField : Commands.GetProperty);
+
+            return result.HasError ? null : result.Data;
         }
 
         private void DoubleClickExecute(object obj)
@@ -43,7 +56,7 @@ namespace DebugHelper
             {
                 var item = obj as FieldInfoWrapper;
                 result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Data.Name, Commands.GetField);
-                
+
                 if (!result.HasError)
                 {
                     item.Value = result.Data;
@@ -53,7 +66,7 @@ namespace DebugHelper
             {
                 var item = obj as PropertyInfoWrapper;
                 result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Data.Name, Commands.GetProperty);
-                
+
                 if (!result.HasError)
                 {
                     item.Value = result.Data;
@@ -78,14 +91,14 @@ namespace DebugHelper
             this.OnPropertyChanged("ReturnedType");
         }
 
-        public IEnumerable<AssemblyWrapper> LoadedTypes { get; set; }
+        public IEnumerable<TypeInfoWrapper> LoadedTypes { get; set; }
 
         public object SelectedType { get; set; }
 
         public TypeWrapper ReturnedType { get; set; }
 
         public ICommand DoubleClickCommand { get; private set; }
-        
+
         public ICommand SelectionChangedCommand { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -99,5 +112,7 @@ namespace DebugHelper
                 handler(this, new PropertyChangedEventArgs(propertyName));
             }
         }
+
+        public event EventHandler OnLoaded;
     }
 }
