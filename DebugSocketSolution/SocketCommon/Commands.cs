@@ -8,6 +8,6 @@ namespace SocketCommon
     {
         GetValue,
         GetTypes,
-        Set
+        GetChildren,
     }
 }

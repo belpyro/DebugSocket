@@ -4,5 +4,7 @@
     {
         Field,
         Property,
+        Type,
+        Value
     }
 }

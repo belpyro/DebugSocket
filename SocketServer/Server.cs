@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -59,7 +58,7 @@ namespace SocketServer
                             case Commands.GetTypes:
                                 try
                                 {
-                                    object types = GetAllTypes();
+                                    var types = GetAllTypes();
                                     responce = new DataResponce(false, types);
                                 }
                                 catch (Exception e)
@@ -71,7 +70,9 @@ namespace SocketServer
                                 object result = GetKspValue(request.Info);
                                 responce = new DataResponce(false, result);
                                 break;
-                            case Commands.Set:
+                            case Commands.GetChildren:
+                                object children = GetChildren(request.Info);
+                                responce = new DataResponce(false, children);
                                 break;
                             default:
                                 throw new ArgumentOutOfRangeException();
@@ -108,29 +109,100 @@ namespace SocketServer
             }
         }
 
-        private object GetKspValue(MemberInfoWrapper info)
+        private object GetChildren(MemberInfoWrapper info)
         {
-            if (!_types.ContainsKey(info.TypeName))
+            if (!_types.ContainsKey(info.TypeName) && !GetKspType(info.ParentType))
                 return new DataResponce(true, string.Format("Types does not contain type {0}", info.TypeName));
+
+            var children = new List<MemberInfoWrapper>();
 
             var type = _types[info.TypeName];
 
-            var field = type.GetField(info.Name);
-
-            if (field == null) return new DataResponce(true, "field not found");
-
-            if (field.IsStatic)
+            var fields = type.GetFields().Select(x => new MemberInfoWrapper()
             {
-                return new MemberInfoWrapper()
-                {
-                    Name = field.Name,
-                    TypeName = field.FieldType.Name,
-                    Value = field.GetValue(null)
-                };
+                Name = x.Name,
+                Type = (x.FieldType.IsClass || x.FieldType.IsValueType) && x.FieldType != typeof(string) && !x.FieldType.IsPrimitive ? MemberType.Type : MemberType.Field,
+                TypeName = x.FieldType.Name, 
+                ParentType = type.Name, IsStatic = x.IsStatic
+            }).ToList();
+
+            var props = type.GetProperties().Select(x => new MemberInfoWrapper()
+            {
+                Name = x.Name,
+                TypeName = x.PropertyType.Name,
+                Type =
+                    (x.PropertyType.IsClass || x.PropertyType.IsValueType )&& x.PropertyType != typeof(string) && !x.PropertyType.IsPrimitive ? MemberType.Type : MemberType.Property,
+                ParentType = type.Name, IsStatic = x.GetGetMethod().IsStatic
+            }).ToList();
+
+            children.AddRange(fields);
+            children.AddRange(props);
+
+            return children.OrderBy(x => x.Name).ToList();
+        }
+
+        private object GetKspValue(MemberInfoWrapper info)
+        {
+            if (!_types.ContainsKey(info.ParentType))
+                return new DataResponce(true, string.Format("Types does not contain type {0}", info.TypeName));
+
+            var type = _types[info.ParentType];
+
+            switch (info.Type)
+            {
+                case MemberType.Field:
+                    var field = type.GetField(info.Name);
+
+                    if (field == null) return new DataResponce(true, "field not found");
+
+                    if (field.IsStatic)
+                    {
+                        return new MemberInfoWrapper()
+                        {
+                            Name = field.Name,
+                            TypeName = field.FieldType.Name,
+                            Value = field.GetValue(null),
+                            Type = MemberType.Value
+                        };
+                    }
+
+                    break;
+                case MemberType.Property:
+                    break;
+                case MemberType.Type:
+                    break;
+                case MemberType.Value:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
 
-            return new DataResponce(true, "object bot found");
+
+
+            return new DataResponce(true, "object not found");
         }
+
+
+        private bool GetKspType(string typeName)
+        {
+            if (string.IsNullOrEmpty(typeName))
+            {
+                return false;
+            }
+
+            if (_types.ContainsKey(typeName)) return true;
+            
+            var t = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(x => x.GetTypes())
+                .FirstOrDefault(y => y.Name.Equals(typeName));
+
+            if (t == null) return false;
+
+            _types.Add(t.Name, t);
+
+            return true;
+        }
+
 
         private object GetAllTypes()
         {
@@ -157,15 +229,7 @@ namespace SocketServer
                 {
                     Name = x.Name,
                     TypeName = x.Name,
-                    Children =
-                        x.GetMembers()
-                            .Where(m => m.MemberType == MemberTypes.Field || m.MemberType == MemberTypes.Property)
-                            .Select(y => new MemberInfoWrapper
-                            {
-                                Name = y.Name,
-                                TypeName = x.Name,
-                                Children = new List<MemberInfoWrapper> { new MemberInfoWrapper() }
-                            }).OrderBy(n => n.Name).ToList()
+                    Type = MemberType.Type,
                 }).ToList();
             }
         }

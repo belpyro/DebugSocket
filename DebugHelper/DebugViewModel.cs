@@ -24,7 +24,7 @@ namespace DebugHelper
 
         public void LoadKspTypes()
         {
-            var result = DebugModel.Instance.GetAll();
+            var result = DebugModel.Instance.GetValue(null, Commands.GetTypes);
 
             if (result == null || result.HasError) return;
 
@@ -38,6 +38,13 @@ namespace DebugHelper
             DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetValue);
 
             return result.HasError ? null : result.Data;
+        }
+
+        public IEnumerable<MemberInfoWrapper> GetChildren(MemberInfoWrapper wrapper)
+        {
+            DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetChildren);
+
+            return (IEnumerable<MemberInfoWrapper>) (result.HasError ? null : result.Data);
         }
 
         public IEnumerable<MemberInfoWrapper> LoadedTypes { get; set; }

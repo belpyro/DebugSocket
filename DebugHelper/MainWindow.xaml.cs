@@ -26,21 +26,87 @@ namespace DebugHelper
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
-            AddHandler(TreeViewItem.ExpandedEvent,new RoutedEventHandler(ItemExpanded), true);
+            AddHandler(TreeViewItem.ExpandedEvent, new RoutedEventHandler(ItemExpanded), true);
         }
 
         private void ItemExpanded(object sender, RoutedEventArgs e)
         {
-
             var item = e.OriginalSource as TreeViewItem;
 
             if (item == null) return;
 
-            var info = item.DataContext as MemberInfoWrapper;
+            var info = item.Tag as MemberInfoWrapper;
 
-            if (info == null || info.Name.Equals(info.TypeName)) return;
+            if (info == null) return;
 
-            var data = model.GetKspValue(info);
+            switch (info.Type)
+            {
+                case MemberType.Field:
+                case MemberType.Property:
+                    var data = model.GetKspValue(info) as MemberInfoWrapper;
+                    FillItemValue(item, data);
+                    break;
+                case MemberType.Type:
+                    var children = model.GetChildren(info);
+                    FillCurrentItem(item, children);
+                    break;
+                case MemberType.Value:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+
+        }
+
+        private void FillItemValue(TreeViewItem item, MemberInfoWrapper wrapper)
+        {
+            item.Items.Clear();
+
+            if (wrapper == null) return;
+
+            var child = new TreeViewItem() { Header = wrapper.Value, Tag = wrapper };
+
+            item.Items.Add(child);
+        }
+
+        private void FillCurrentItem(TreeViewItem item, IEnumerable<MemberInfoWrapper> data)
+        {
+            item.Items.Clear();
+
+            if (data == null || !data.Any())
+            {
+                item.Header = string.Format("Member {0} not exist", item.Header);
+                return;
+            }
+
+
+
+            foreach (var wrapper in data)
+            {
+                var dataItem = new TreeViewItem() { Header = wrapper.Name, Tag = wrapper };
+
+                switch (wrapper.Type)
+                {
+                    case MemberType.Field:
+                        dataItem.Foreground = new SolidColorBrush(Colors.CornflowerBlue);
+                        break;
+                    case MemberType.Property:
+                        dataItem.Foreground = new SolidColorBrush(Colors.DarkGreen);
+                        break;
+                    case MemberType.Type:
+                        dataItem.Foreground = new SolidColorBrush(Colors.Firebrick);
+                        break;
+                    case MemberType.Value:
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+
+                dataItem.Items.Add(new TreeViewItem() { Header = "Loading..." });
+
+                item.Items.Add(dataItem);
+
+            }
         }
 
 
@@ -55,9 +121,16 @@ namespace DebugHelper
         void model_OnLoaded(object sender, EventArgs e)
         {
             if (model.LoadedTypes == null || !model.LoadedTypes.Any()) return;
-            
+
             TypeTree.Items.Clear();
-            TypeTree.ItemsSource = model.LoadedTypes;
+
+            foreach (var item in model.LoadedTypes.Select(wrapper => new TreeViewItem() { Header = wrapper.Name, Tag = wrapper }))
+            {
+                item.Items.Add(new TreeViewItem() { Header = "Loading..." });
+
+                TypeTree.Items.Add(item);
+            }
+
         }
     }
 }
