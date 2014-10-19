@@ -16,7 +16,7 @@
             <RowDefinition Height=".5*"/>
         </Grid.RowDefinitions>
 
-        <controls:AutoCompleteBox x:Name="CompleteBox" ItemsSource="{Binding LoadedTypes}" ValueMemberBinding="{Binding Name}" ValueMemberPath="Name"/>
+        <TextBox x:Name="CompleteBox" TextChanged="CompleteBox_OnTextChanged"/>
 
         <TreeView Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Name="TypeTree">
             

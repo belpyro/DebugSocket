@@ -67,7 +67,7 @@ namespace SocketServer
                                 }
                                 break;
                             case Commands.GetValue:
-                                object result = GetKspValue(request.Info);
+                                object result = ParseKspValue(request.Info);//GetKspValue(request.Info);
                                 responce = new DataResponce(false, result);
                                 break;
                             case Commands.GetChildren:
@@ -82,8 +82,7 @@ namespace SocketServer
                         {
                             try
                             {
-                                formatter.Serialize(mStream,
-                                    responce ?? new DataResponce(true, "Error serialization responce"));
+                                formatter.Serialize(mStream, responce);
                             }
                             catch (Exception ex)
                             {
@@ -122,8 +121,9 @@ namespace SocketServer
             {
                 Name = x.Name,
                 Type = (x.FieldType.IsClass || x.FieldType.IsValueType) && x.FieldType != typeof(string) && !x.FieldType.IsPrimitive ? MemberType.Type : MemberType.Field,
-                TypeName = x.FieldType.Name, 
-                ParentType = type.Name, IsStatic = x.IsStatic
+                TypeName = x.FieldType.Name,
+                ParentType = type.Name,
+                IsStatic = x.IsStatic
             }).ToList();
 
             var props = type.GetProperties().Select(x => new MemberInfoWrapper()
@@ -131,8 +131,9 @@ namespace SocketServer
                 Name = x.Name,
                 TypeName = x.PropertyType.Name,
                 Type =
-                    (x.PropertyType.IsClass || x.PropertyType.IsValueType )&& x.PropertyType != typeof(string) && !x.PropertyType.IsPrimitive ? MemberType.Type : MemberType.Property,
-                ParentType = type.Name, IsStatic = x.GetGetMethod().IsStatic
+                    (x.PropertyType.IsClass || x.PropertyType.IsValueType) && x.PropertyType != typeof(string) && !x.PropertyType.IsPrimitive ? MemberType.Type : MemberType.Property,
+                ParentType = type.Name,
+                IsStatic = x.GetGetMethod().IsStatic
             }).ToList();
 
             children.AddRange(fields);
@@ -141,7 +142,26 @@ namespace SocketServer
             return children.OrderBy(x => x.Name).ToList();
         }
 
-        private object GetKspValue(MemberInfoWrapper info)
+        private object ParseKspValue(MemberInfoWrapper data)
+        {
+            var items = new List<MemberInfoWrapper>();
+
+            MemberInfoWrapper item = data;
+
+            while (item != null)
+            {
+                items.Add(item);
+                item = item.Parent;
+            }
+
+            items.Reverse();
+
+            items.ForEach(x => Debug.Log(x.Name));
+
+            return null;
+        }
+
+        private object GetKspValue(MemberInfoWrapper info, object instance = null)
         {
             if (!_types.ContainsKey(info.ParentType))
                 return new DataResponce(true, string.Format("Types does not contain type {0}", info.TypeName));
@@ -191,7 +211,7 @@ namespace SocketServer
             }
 
             if (_types.ContainsKey(typeName)) return true;
-            
+
             var t = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(x => x.GetTypes())
                 .FirstOrDefault(y => y.Name.Equals(typeName));

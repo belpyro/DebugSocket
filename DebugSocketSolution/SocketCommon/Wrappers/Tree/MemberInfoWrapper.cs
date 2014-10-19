@@ -61,6 +61,8 @@ namespace SocketCommon.Wrappers.Tree
 
         public bool IsStatic { get; set; }
 
+        public MemberInfoWrapper Parent { get; set; }
+
         [field :NonSerialized]
         public event PropertyChangedEventHandler PropertyChanged;
 

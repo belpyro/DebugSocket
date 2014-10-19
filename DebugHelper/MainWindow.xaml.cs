@@ -77,12 +77,13 @@ namespace DebugHelper
             {
                 item.Header = string.Format("Member {0} not exist", item.Header);
                 return;
-            }
-
+            } 
 
 
             foreach (var wrapper in data)
             {
+                wrapper.Parent = item.Tag as MemberInfoWrapper;
+
                 var dataItem = new TreeViewItem() { Header = wrapper.Name, Tag = wrapper };
 
                 switch (wrapper.Type)
@@ -131,6 +132,18 @@ namespace DebugHelper
                 TypeTree.Items.Add(item);
             }
 
+        }
+
+        private void CompleteBox_OnTextChanged(object sender, RoutedEventArgs e)
+        {
+            var text = CompleteBox.Text;
+
+            foreach (TreeViewItem item in TypeTree.Items)
+            {
+                item.Visibility = item.Header.ToString().StartsWith(text, StringComparison.InvariantCultureIgnoreCase)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
         }
     }
 }
