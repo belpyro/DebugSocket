@@ -161,41 +161,48 @@ namespace SocketServer
             return null;
         }
 
-        private object GetKspValue(MemberInfoWrapper info, object instance = null)
+        private object GetKspValue(IEnumerable<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
         {
-            if (!_types.ContainsKey(info.ParentType))
-                return new DataResponce(true, string.Format("Types does not contain type {0}", info.TypeName));
-
-            var type = _types[info.ParentType];
-
-            switch (info.Type)
+            if (parent == null)
             {
-                case MemberType.Field:
-                    var field = type.GetField(info.Name);
 
-                    if (field == null) return new DataResponce(true, "field not found");
-
-                    if (field.IsStatic)
-                    {
-                        return new MemberInfoWrapper()
-                        {
-                            Name = field.Name,
-                            TypeName = field.FieldType.Name,
-                            Value = field.GetValue(null),
-                            Type = MemberType.Value
-                        };
-                    }
-
-                    break;
-                case MemberType.Property:
-                    break;
-                case MemberType.Type:
-                    break;
-                case MemberType.Value:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
+
+            //private object GetKspValue(MemberInfoWrapper info, object instance = null)
+        //{
+        //    if (!_types.ContainsKey(info.ParentType))
+        //        return new DataResponce(true, string.Format("Types does not contain type {0}", info.TypeName));
+
+        //    var type = _types[info.ParentType];
+
+        //    switch (info.Type)
+        //    {
+        //        case MemberType.Field:
+        //            var field = type.GetField(info.Name);
+
+        //            if (field == null) return new DataResponce(true, "field not found");
+
+        //            if (field.IsStatic)
+        //            {
+        //                return new MemberInfoWrapper()
+        //                {
+        //                    Name = field.Name,
+        //                    TypeName = field.FieldType.Name,
+        //                    Value = field.GetValue(null),
+        //                    Type = MemberType.Value
+        //                };
+        //            }
+
+        //            break;
+        //        case MemberType.Property:
+        //            break;
+        //        case MemberType.Type:
+        //            break;
+        //        case MemberType.Value:
+        //            break;
+        //        default:
+        //            throw new ArgumentOutOfRangeException();
+        //    }
 
 
 
@@ -232,13 +239,28 @@ namespace SocketServer
 
                 List<Type> types =
                     assemblies.Where(x => x.FullName.Contains("Assembly-CSharp"))
+                        .SelectMany(x => x.GetTypes()).Where(x => !x.IsInterface && !x.IsAbstract)
+                        .Where(x => Regex.IsMatch(x.Name, "^[A-Za-z0-9]{3,}$", RegexOptions.IgnoreCase))
+                        .OrderBy(x => x.Name)
+                        .Distinct(new TypeEqualityComparer())
+                        .ToList();
+
+                List<Type> unityTypes =
+                    assemblies.Where(x => x.FullName.Contains("UnityEngine"))
                         .SelectMany(x => x.GetTypes())
-                        .Where(x => Regex.IsMatch(x.Name, "^[A-Za-z]{3,}$", RegexOptions.IgnoreCase))
+                        .Where(x => Regex.IsMatch(x.Name, "^[A-Za-z0-9]{3,}$", RegexOptions.IgnoreCase))
                         .OrderBy(x => x.Name)
                         .Distinct(new TypeEqualityComparer())
                         .ToList();
 
                 foreach (var type in types)
+                {
+                    if (_types.ContainsKey(type.Name)) continue;
+
+                    _types.Add(type.Name, type);
+                }
+
+                foreach (var type in unityTypes)
                 {
                     if (_types.ContainsKey(type.Name)) continue;
 
