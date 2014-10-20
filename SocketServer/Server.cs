@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,16 +16,18 @@ using UnityEngine;
 
 namespace SocketServer
 {
-    [KSPAddon(KSPAddon.Startup.MainMenu, false)]
+    [KSPAddon(KSPAddon.Startup.Flight, false)]
     public class Server : MonoBehaviour
     {
-        private readonly Dictionary<Type, string> _instantiateTypes = new Dictionary<Type, string>();
+        private readonly Dictionary<string, string> _instantiateTypes = new Dictionary<string, string>();
         private readonly Dictionary<string, Type> _types = new Dictionary<string, Type>();
         private readonly object o = new object();
         private TcpListener _listener;
 
         public void Start()
         {
+            _instantiateTypes.Add(typeof(FlightGlobals).Name, "fetch");
+
             var t = new Thread(StartServer);
             t.Start();
         }
@@ -67,8 +70,17 @@ namespace SocketServer
                                 }
                                 break;
                             case Commands.GetValue:
-                                object result = ParseKspValue(request.Info);//GetKspValue(request.Info);
-                                responce = new DataResponce(false, result);
+                                var result = ParseKspValue(request.Info);//GetKspValue(request.Info);
+                                if (result != null)
+                                {
+                                    responce = new DataResponce(false, new MemberInfoWrapper()
+                                    {
+                                        Name = request.Info.Name,
+                                        Type = MemberType.Value,
+                                        Value = result.ToString(),
+                                        TypeName = result.GetType().Name
+                                    });
+                                }
                                 break;
                             case Commands.GetChildren:
                                 object children = GetChildren(request.Info);
@@ -82,7 +94,7 @@ namespace SocketServer
                         {
                             try
                             {
-                                formatter.Serialize(mStream, responce);
+                                formatter.Serialize(mStream, responce ?? new DataResponce(true, "responce is null"));
                             }
                             catch (Exception ex)
                             {
@@ -113,6 +125,11 @@ namespace SocketServer
             if (!_types.ContainsKey(info.TypeName) && !GetKspType(info.ParentType))
                 return new DataResponce(true, string.Format("Types does not contain type {0}", info.TypeName));
 
+            //if (ParseKspValue(info) == null)
+            //{
+            //    return null;
+            //}
+
             var children = new List<MemberInfoWrapper>();
 
             var type = _types[info.TypeName];
@@ -120,7 +137,7 @@ namespace SocketServer
             var fields = type.GetFields().Select(x => new MemberInfoWrapper()
             {
                 Name = x.Name,
-                Type = (x.FieldType.IsClass || x.FieldType.IsValueType) && x.FieldType != typeof(string) && !x.FieldType.IsPrimitive ? MemberType.Type : MemberType.Field,
+                Type = (x.FieldType.IsClass || x.FieldType.IsValueType) && !IsSimpleType(x.FieldType) ? MemberType.Type : MemberType.Field,
                 TypeName = x.FieldType.Name,
                 ParentType = type.Name,
                 IsStatic = x.IsStatic
@@ -131,7 +148,7 @@ namespace SocketServer
                 Name = x.Name,
                 TypeName = x.PropertyType.Name,
                 Type =
-                    (x.PropertyType.IsClass || x.PropertyType.IsValueType) && x.PropertyType != typeof(string) && !x.PropertyType.IsPrimitive ? MemberType.Type : MemberType.Property,
+                    (x.PropertyType.IsClass || x.PropertyType.IsValueType) && !IsSimpleType(x.PropertyType) ? MemberType.Type : MemberType.Property,
                 ParentType = type.Name,
                 IsStatic = x.GetGetMethod().IsStatic
             }).ToList();
@@ -140,6 +157,14 @@ namespace SocketServer
             children.AddRange(props);
 
             return children.OrderBy(x => x.Name).ToList();
+        }
+
+        private bool IsSimpleType(Type t)
+        {
+            return t.IsPrimitive || t.GetInterfaces().Contains(typeof(IEnumerable)) || t == typeof(string) ||
+                   t == typeof(Guid) || t.IsEnum || t == typeof(Vector3) || t == typeof(Vector3d) || t == typeof(Quaternion) ||
+                   t == typeof(Vector2) || t == typeof(Vector2d);
+
         }
 
         private object ParseKspValue(MemberInfoWrapper data)
@@ -156,57 +181,83 @@ namespace SocketServer
 
             items.Reverse();
 
-            items.ForEach(x => Debug.Log(x.Name));
-
-            return null;
+            return GetKspValue(items);
         }
 
-        private object GetKspValue(IEnumerable<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
+        private object GetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
         {
-            if (parent == null)
+            if (wrappers == null || !wrappers.Any()) return null;
+
+            var first = wrappers.FirstOrDefault();
+
+            Debug.Log("First item " + first.Name);
+
+            wrappers = wrappers.Skip(1).ToList();
+
+            try
             {
+                if (parent == null)
+                {
+                    if (!_types.ContainsKey(first.TypeName)) return null;
 
+                    var type = _types[first.TypeName];
+
+                    Debug.Log("Get type " + type.Name);
+
+                    if (_instantiateTypes.ContainsKey(type.Name))
+                    {
+                        var instanceField = type.GetField(_instantiateTypes[type.Name]);
+
+                        if (instanceField == null)
+                        {
+                            var instanceProp = type.GetProperty(_instantiateTypes[type.Name]);
+
+                            if (instanceProp == null) return null;
+
+                            return GetKspValue(wrappers, instanceProp.GetValue(null, null), type);
+                        }
+
+                        var dataInstance = instanceField.GetValue(null);
+
+                        return GetKspValue(wrappers, dataInstance, type);
+                    }
+
+                    return GetKspValue(wrappers, null, type);
+                }
+
+                var field = parent.GetField(first.Name);
+
+                if (field != null)
+                {
+                    Debug.Log("Get field " + field.Name);
+
+                    var value = field.IsStatic ? field.GetValue(null) : instance != null ? field.GetValue(instance) : null;
+
+                    Debug.Log("Get value " + value);
+
+                    return wrappers.Any() ? GetKspValue(wrappers, value, field.FieldType) : value;
+                }
+
+                var prop = parent.GetProperty(first.Name);
+
+                if (prop != null)
+                {
+                    Debug.Log("Get prop " + prop.Name);
+
+                    var value = prop.GetGetMethod().IsStatic ? prop.GetValue(null, null) : instance != null ? prop.GetValue(instance, null) : null;
+
+                    Debug.Log("Get value " + value);
+
+                    return wrappers.Any() ? GetKspValue(wrappers, value, prop.PropertyType) : value;
+                }
+
+                return null;
             }
-
-            //private object GetKspValue(MemberInfoWrapper info, object instance = null)
-        //{
-        //    if (!_types.ContainsKey(info.ParentType))
-        //        return new DataResponce(true, string.Format("Types does not contain type {0}", info.TypeName));
-
-        //    var type = _types[info.ParentType];
-
-        //    switch (info.Type)
-        //    {
-        //        case MemberType.Field:
-        //            var field = type.GetField(info.Name);
-
-        //            if (field == null) return new DataResponce(true, "field not found");
-
-        //            if (field.IsStatic)
-        //            {
-        //                return new MemberInfoWrapper()
-        //                {
-        //                    Name = field.Name,
-        //                    TypeName = field.FieldType.Name,
-        //                    Value = field.GetValue(null),
-        //                    Type = MemberType.Value
-        //                };
-        //            }
-
-        //            break;
-        //        case MemberType.Property:
-        //            break;
-        //        case MemberType.Type:
-        //            break;
-        //        case MemberType.Value:
-        //            break;
-        //        default:
-        //            throw new ArgumentOutOfRangeException();
-        //    }
-
-
-
-            return new DataResponce(true, "object not found");
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+                return null;
+            }
         }
 
 

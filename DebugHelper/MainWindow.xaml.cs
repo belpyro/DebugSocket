@@ -62,9 +62,7 @@ namespace DebugHelper
         {
             item.Items.Clear();
 
-            if (wrapper == null) return;
-
-            var child = new TreeViewItem() { Header = wrapper.Value, Tag = wrapper };
+            var child = new TreeViewItem() { Header = wrapper == null ? "no value or no instantiate" : wrapper.Value, Tag = wrapper };
 
             item.Items.Add(child);
         }
@@ -79,12 +77,11 @@ namespace DebugHelper
                 return;
             } 
 
-
             foreach (var wrapper in data)
             {
                 wrapper.Parent = item.Tag as MemberInfoWrapper;
 
-                var dataItem = new TreeViewItem() { Header = wrapper.Name, Tag = wrapper };
+                var dataItem = new TreeViewItem() { Header = string.Format("{0} ({1})", wrapper.Name, wrapper.TypeName), Tag = wrapper };
 
                 switch (wrapper.Type)
                 {
