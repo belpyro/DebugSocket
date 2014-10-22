@@ -16,7 +16,7 @@ using UnityEngine;
 
 namespace SocketServer
 {
-    [KSPAddon(KSPAddon.Startup.Flight, false)]
+    [KSPAddon(KSPAddon.Startup.MainMenu, false)]
     public class Server : MonoBehaviour
     {
         private readonly Dictionary<string, string> _instantiateTypes = new Dictionary<string, string>();
@@ -86,6 +86,13 @@ namespace SocketServer
                                 object children = GetChildren(request.Info);
                                 responce = new DataResponce(false, children);
                                 break;
+                            case Commands.GetCollection:
+                                IEnumerable<MemberInfoWrapper> collection = GetCollection(request.Info);
+                                if (collection != null)
+                                {
+                                   responce = new DataResponce(false, collection); 
+                                }
+                                break;
                             default:
                                 throw new ArgumentOutOfRangeException();
                         }
@@ -120,6 +127,40 @@ namespace SocketServer
             }
         }
 
+        private IEnumerable<MemberInfoWrapper> GetCollection(MemberInfoWrapper info)
+        {
+            var result = new List<MemberInfoWrapper>();
+
+            var source = ParseKspValue(info);
+            if (source == null) return null;
+
+            if (!source.GetType().GetInterfaces().Contains(typeof(IEnumerable))) return null;
+
+            foreach (var item in (IEnumerable) source)
+            {
+                if (_types.ContainsKey(item.GetType().Name) && !IsSimpleType(item.GetType()))
+                {
+                    result.Add(new MemberInfoWrapper()
+                    {
+                        Name = item.GetType().Name,
+                        ParentType = info.TypeName,
+                        Type = MemberType.Type
+                    }); 
+                }
+                else
+                {
+                    result.Add(new MemberInfoWrapper()
+                    {
+                        Name = item.GetType().Name,
+                        ParentType = info.TypeName,
+                        Type = MemberType.Property
+                    }); 
+                } 
+            }
+
+            return result;
+        }
+
         private object GetChildren(MemberInfoWrapper info)
         {
             if (!_types.ContainsKey(info.TypeName) && !GetKspType(info.ParentType))
@@ -137,7 +178,7 @@ namespace SocketServer
             var fields = type.GetFields().Select(x => new MemberInfoWrapper()
             {
                 Name = x.Name,
-                Type = (x.FieldType.IsClass || x.FieldType.IsValueType) && !IsSimpleType(x.FieldType) ? MemberType.Type : MemberType.Field,
+                Type = (x.FieldType.IsClass || x.FieldType.IsValueType) && !IsSimpleType(x.FieldType) ? x.FieldType.GetInterfaces().Contains(typeof(IEnumerable)) ? MemberType.Collection : MemberType.Type : MemberType.Field,
                 TypeName = x.FieldType.Name,
                 ParentType = type.Name,
                 IsStatic = x.IsStatic
@@ -148,7 +189,7 @@ namespace SocketServer
                 Name = x.Name,
                 TypeName = x.PropertyType.Name,
                 Type =
-                    (x.PropertyType.IsClass || x.PropertyType.IsValueType) && !IsSimpleType(x.PropertyType) ? MemberType.Type : MemberType.Property,
+                    (x.PropertyType.IsClass || x.PropertyType.IsValueType) && !IsSimpleType(x.PropertyType) ? x.PropertyType.GetInterfaces().Contains(typeof(IEnumerable)) ? MemberType.Collection : MemberType.Type : MemberType.Property,
                 ParentType = type.Name,
                 IsStatic = x.GetGetMethod().IsStatic
             }).ToList();
@@ -161,7 +202,7 @@ namespace SocketServer
 
         private bool IsSimpleType(Type t)
         {
-            return t.IsPrimitive || t.GetInterfaces().Contains(typeof(IEnumerable)) || t == typeof(string) ||
+            return t.IsPrimitive || t == typeof(string) ||
                    t == typeof(Guid) || t.IsEnum || t == typeof(Vector3) || t == typeof(Vector3d) || t == typeof(Quaternion) ||
                    t == typeof(Vector2) || t == typeof(Vector2d);
 

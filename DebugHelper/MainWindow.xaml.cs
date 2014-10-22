@@ -52,6 +52,10 @@ namespace DebugHelper
                     break;
                 case MemberType.Value:
                     break;
+                case MemberType.Collection:
+                    var items = model.GetKspCollection(info);
+                    FillCurrentItem(item, items);
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -95,6 +99,7 @@ namespace DebugHelper
                         dataItem.Foreground = new SolidColorBrush(Colors.Firebrick);
                         break;
                     case MemberType.Value:
+                    case MemberType.Collection:
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();

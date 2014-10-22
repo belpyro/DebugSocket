@@ -40,6 +40,13 @@ namespace DebugHelper
             return result.HasError ? null : result.Data;
         }
 
+        public IEnumerable<MemberInfoWrapper> GetKspCollection(MemberInfoWrapper wrapper)
+        {
+            DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetCollection);
+
+            return (IEnumerable<MemberInfoWrapper>) (result.HasError ? null : result.Data);
+        }
+
         public IEnumerable<MemberInfoWrapper> GetChildren(MemberInfoWrapper wrapper)
         {
             DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetChildren);

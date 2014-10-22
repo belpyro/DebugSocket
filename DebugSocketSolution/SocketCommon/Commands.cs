@@ -9,5 +9,6 @@ namespace SocketCommon
         GetValue,
         GetTypes,
         GetChildren,
+        GetCollection,
     }
 }

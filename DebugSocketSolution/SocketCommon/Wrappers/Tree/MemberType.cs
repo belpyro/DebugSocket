@@ -5,6 +5,7 @@
         Field,
         Property,
         Type,
-        Value
+        Value,
+        Collection
     }
 }
