@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Xml.Serialization;
 using SocketCommon.Wrappers.Tree;
 
 namespace DebugHelper
@@ -14,7 +13,7 @@ namespace DebugHelper
 
     public class DebugModel
     {
-        private BinaryFormatter _formatter = new BinaryFormatter();
+        private readonly BinaryFormatter _formatter = new BinaryFormatter();
 
         private DebugModel() { }
 
@@ -26,11 +25,6 @@ namespace DebugHelper
             {
                 return _model ?? (_model = new DebugModel());
             }
-        }
-
-        public object Get(Type t)
-        {
-            return null;
         }
 
         public DataResponce GetValue(MemberInfoWrapper wrapper, Commands command)

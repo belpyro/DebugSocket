@@ -1,22 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using SocketCommon.Wrappers;
 using SocketCommon.Wrappers.Tree;
 
 namespace DebugHelper
 {
     using System.ComponentModel;
-    using System.Reflection;
     using System.Runtime.CompilerServices;
-    using System.Windows;
-    using System.Windows.Controls;
     using System.Windows.Input;
 
     using DebugHelper.Annotations;
-    using GalaSoft.MvvmLight.Command;
-
     using SocketCommon;
 
     public class DebugViewModel : INotifyPropertyChanged
@@ -55,14 +47,6 @@ namespace DebugHelper
         }
 
         public IEnumerable<MemberInfoWrapper> LoadedTypes { get; set; }
-
-        public object SelectedType { get; set; }
-
-        public TypeWrapper ReturnedType { get; set; }
-
-        public ICommand DoubleClickCommand { get; private set; }
-
-        public ICommand SelectionChangedCommand { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
 

@@ -11,7 +11,7 @@ namespace SocketCommon.Wrappers.Tree
         private string _name;
         private string _typeName;
         private object _value;
-        private MemberType _type;
+        private MemberType _itemType;
 
         public string Name
         {
@@ -46,14 +46,14 @@ namespace SocketCommon.Wrappers.Tree
             }
         }
 
-        public MemberType Type
+        public MemberType ItemType
         {
-            get { return _type; }
+            get { return _itemType; }
             set
             {
-                if (value == _type) return;
-                _type = value;
-                OnPropertyChanged("Type");
+                if (value == _itemType) return;
+                _itemType = value;
+                OnPropertyChanged("ItemType");
             }
         }
 
@@ -63,7 +63,11 @@ namespace SocketCommon.Wrappers.Tree
 
         public MemberInfoWrapper Parent { get; set; }
 
-        [field :NonSerialized]
+        public int Index { get; set; }
+
+        #region PropertyChanged
+
+        [field: NonSerialized]
         public event PropertyChangedEventHandler PropertyChanged;
 
         [NotifyPropertyChangedInvocator]
@@ -72,5 +76,7 @@ namespace SocketCommon.Wrappers.Tree
             PropertyChangedEventHandler handler = PropertyChanged;
             if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));
         }
+ 
+        #endregion
     }
 }

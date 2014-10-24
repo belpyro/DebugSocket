@@ -21,7 +21,7 @@ namespace SocketServer
     {
         private readonly Dictionary<string, string> _instantiateTypes = new Dictionary<string, string>();
         private readonly Dictionary<string, Type> _types = new Dictionary<string, Type>();
-        private readonly object o = new object();
+        private readonly object _o = new object();
         private TcpListener _listener;
 
         public void Start()
@@ -76,7 +76,7 @@ namespace SocketServer
                                     responce = new DataResponce(false, new MemberInfoWrapper()
                                     {
                                         Name = request.Info.Name,
-                                        Type = MemberType.Value,
+                                        ItemType = MemberType.Value,
                                         Value = result.ToString(),
                                         TypeName = result.GetType().Name
                                     });
@@ -136,6 +136,8 @@ namespace SocketServer
 
             if (!source.GetType().GetInterfaces().Contains(typeof(IEnumerable))) return null;
 
+            var i = 0;
+
             foreach (var item in (IEnumerable) source)
             {
                 if (_types.ContainsKey(item.GetType().Name) && !IsSimpleType(item.GetType()))
@@ -143,8 +145,10 @@ namespace SocketServer
                     result.Add(new MemberInfoWrapper()
                     {
                         Name = item.GetType().Name,
+                        TypeName = item.GetType().Name,
                         ParentType = info.TypeName,
-                        Type = MemberType.Type
+                        ItemType = MemberType.Type,
+                        Index = i
                     }); 
                 }
                 else
@@ -153,9 +157,13 @@ namespace SocketServer
                     {
                         Name = item.GetType().Name,
                         ParentType = info.TypeName,
-                        Type = MemberType.Property
+                        ItemType = MemberType.Property,
+                        TypeName = item.GetType().Name,
+                        Index = i
                     }); 
-                } 
+                }
+
+                i++;
             }
 
             return result;
@@ -166,11 +174,6 @@ namespace SocketServer
             if (!_types.ContainsKey(info.TypeName) && !GetKspType(info.ParentType))
                 return new DataResponce(true, string.Format("Types does not contain type {0}", info.TypeName));
 
-            //if (ParseKspValue(info) == null)
-            //{
-            //    return null;
-            //}
-
             var children = new List<MemberInfoWrapper>();
 
             var type = _types[info.TypeName];
@@ -178,7 +181,7 @@ namespace SocketServer
             var fields = type.GetFields().Select(x => new MemberInfoWrapper()
             {
                 Name = x.Name,
-                Type = (x.FieldType.IsClass || x.FieldType.IsValueType) && !IsSimpleType(x.FieldType) ? x.FieldType.GetInterfaces().Contains(typeof(IEnumerable)) ? MemberType.Collection : MemberType.Type : MemberType.Field,
+                ItemType = (x.FieldType.IsClass || x.FieldType.IsValueType) && !IsSimpleType(x.FieldType) ? x.FieldType.GetInterfaces().Contains(typeof(IEnumerable)) ? MemberType.Collection : MemberType.Type : MemberType.Field,
                 TypeName = x.FieldType.Name,
                 ParentType = type.Name,
                 IsStatic = x.IsStatic
@@ -188,7 +191,7 @@ namespace SocketServer
             {
                 Name = x.Name,
                 TypeName = x.PropertyType.Name,
-                Type =
+                ItemType =
                     (x.PropertyType.IsClass || x.PropertyType.IsValueType) && !IsSimpleType(x.PropertyType) ? x.PropertyType.GetInterfaces().Contains(typeof(IEnumerable)) ? MemberType.Collection : MemberType.Type : MemberType.Property,
                 ParentType = type.Name,
                 IsStatic = x.GetGetMethod().IsStatic
@@ -274,7 +277,7 @@ namespace SocketServer
 
                     var value = field.IsStatic ? field.GetValue(null) : instance != null ? field.GetValue(instance) : null;
 
-                    Debug.Log("Get value " + value);
+                    Debug.Log("Get field value " + value);
 
                     return wrappers.Any() ? GetKspValue(wrappers, value, field.FieldType) : value;
                 }
@@ -287,7 +290,7 @@ namespace SocketServer
 
                     var value = prop.GetGetMethod().IsStatic ? prop.GetValue(null, null) : instance != null ? prop.GetValue(instance, null) : null;
 
-                    Debug.Log("Get value " + value);
+                    Debug.Log("Get prop value " + value);
 
                     return wrappers.Any() ? GetKspValue(wrappers, value, prop.PropertyType) : value;
                 }
@@ -322,10 +325,9 @@ namespace SocketServer
             return true;
         }
 
-
         private object GetAllTypes()
         {
-            lock (o)
+            lock (_o)
             {
                 Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
@@ -363,14 +365,14 @@ namespace SocketServer
                 {
                     Name = x.Name,
                     TypeName = x.Name,
-                    Type = MemberType.Type,
+                    ItemType = MemberType.Type,
                 }).ToList();
             }
         }
 
         private DataRequest GetDataRequest(byte[] data)
         {
-            lock (o)
+            lock (_o)
             {
                 var formatter = new BinaryFormatter();
                 return formatter.Deserialize(new MemoryStream(data)) as DataRequest;

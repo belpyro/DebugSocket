@@ -39,7 +39,7 @@ namespace DebugHelper
 
             if (info == null) return;
 
-            switch (info.Type)
+            switch (info.ItemType)
             {
                 case MemberType.Field:
                 case MemberType.Property:
@@ -48,13 +48,13 @@ namespace DebugHelper
                     break;
                 case MemberType.Type:
                     var children = model.GetChildren(info);
-                    FillCurrentItem(item, children);
+                    FillItemByChildren(item, children);
                     break;
                 case MemberType.Value:
                     break;
                 case MemberType.Collection:
                     var items = model.GetKspCollection(info);
-                    FillCurrentItem(item, items);
+                    FillItemByChildren(item, items);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -71,7 +71,7 @@ namespace DebugHelper
             item.Items.Add(child);
         }
 
-        private void FillCurrentItem(TreeViewItem item, IEnumerable<MemberInfoWrapper> data)
+        private void FillItemByChildren(TreeViewItem item, IEnumerable<MemberInfoWrapper> data)
         {
             item.Items.Clear();
 
@@ -87,7 +87,7 @@ namespace DebugHelper
 
                 var dataItem = new TreeViewItem() { Header = string.Format("{0} ({1})", wrapper.Name, wrapper.TypeName), Tag = wrapper };
 
-                switch (wrapper.Type)
+                switch (wrapper.ItemType)
                 {
                     case MemberType.Field:
                         dataItem.Foreground = new SolidColorBrush(Colors.CornflowerBlue);
@@ -99,7 +99,9 @@ namespace DebugHelper
                         dataItem.Foreground = new SolidColorBrush(Colors.Firebrick);
                         break;
                     case MemberType.Value:
+                        break;
                     case MemberType.Collection:
+                        dataItem.Foreground = new SolidColorBrush(Colors.DarkOrange);
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -111,8 +113,7 @@ namespace DebugHelper
 
             }
         }
-
-
+        
         void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             model = new DebugViewModel();
