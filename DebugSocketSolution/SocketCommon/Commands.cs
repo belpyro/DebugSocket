@@ -6,10 +6,11 @@ namespace SocketCommon
 {
     public enum Commands
     {
-        GetType,
-        GetField,
-        GetProperty,
+        GetValue,
         GetTypes,
-        Set
+        GetChildren,
+        GetCollection,
+        GetExternal,
+        SetValue
     }
 }

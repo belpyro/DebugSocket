@@ -6,6 +6,8 @@ namespace SocketCommon
     [Serializable]
     public class DataResponce
     {
+        protected DataResponce(){}
+
         public DataResponce(bool isError, object value)
         {
             HasError = isError;

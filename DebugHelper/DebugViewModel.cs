@@ -1,79 +1,62 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using SocketCommon.Wrappers;
+using SocketCommon.Wrappers.Tree;
 
 namespace DebugHelper
 {
     using System.ComponentModel;
-    using System.Reflection;
     using System.Runtime.CompilerServices;
-    using System.Windows;
-    using System.Windows.Controls;
     using System.Windows.Input;
 
     using DebugHelper.Annotations;
-    using GalaSoft.MvvmLight.Command;
-
     using SocketCommon;
 
     public class DebugViewModel : INotifyPropertyChanged
     {
-        public DebugViewModel()
+        public void LoadKspTypes()
         {
-            SelectionChangedCommand = new RelayCommand<RoutedPropertyChangedEventArgs<object>>(SelectionChangedExecute);
-            DoubleClickCommand = new RelayCommand<object>(DoubleClickExecute);
+            var result = DebugModel.Instance.GetValue(null, Commands.GetTypes);
 
-            var result = DebugModel.Instance.GetAll();
+            if (result == null || result.HasError) return;
 
-            if (result != null && !result.HasError)
-            {
-                LoadedTypes = (IEnumerable<AssemblyWrapper>)result.Data;
-            }
+            LoadedTypes = (List<MemberInfoWrapper>)result.Data;
+
+            if (OnLoaded != null) OnLoaded(this, EventArgs.Empty);
         }
 
-        private void DoubleClickExecute(object obj)
+        public object GetKspValue(MemberInfoWrapper wrapper)
         {
-            if (obj == null) return;
+            DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetValue);
 
-            var item = obj as FieldInfoWrapper;
-
-            var result = DebugModel.Instance.GetValue(ReturnedType.Name, item.Data.Name, Commands.GetField);
-
-            if (!result.HasError)
-            {
-                item.Value = result.Data;
-                this.OnPropertyChanged("ReturnedType");
-            }
+            return result.HasError ? null : result.Data;
         }
 
-        private void SelectionChangedExecute(RoutedPropertyChangedEventArgs<object> obj)
+        public IEnumerable<MemberInfoWrapper> GetKspCollection(MemberInfoWrapper wrapper)
         {
-            if (obj.NewValue == null) return;
+            DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetCollection);
 
-            if (obj.NewValue is AssemblyWrapper)
-            {
-                SelectedType = obj.NewValue;
-                return;
-            }
-
-            var result = DebugModel.Instance.Get(obj.NewValue.ToString());
-            if (result == null || result.HasError) { return; }
-            this.ReturnedType = (TypeWrapper)result.Data;
-
-            this.OnPropertyChanged("ReturnedType");
+            return (IEnumerable<MemberInfoWrapper>) (result.HasError ? null : result.Data);
         }
 
-        public IEnumerable<AssemblyWrapper> LoadedTypes { get; set; }
+        public IEnumerable<MemberInfoWrapper> GetChildren(MemberInfoWrapper wrapper)
+        {
+            DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetChildren);
 
-        public object SelectedType { get; set; }
+            return (IEnumerable<MemberInfoWrapper>) (result.HasError ? null : result.Data);
+        }
+        public MemberInfoWrapper GetExternalWrapper()
+        {
+            DataResponce result = DebugModel.Instance.GetValue(null, Commands.GetExternal);
 
-        public TypeWrapper ReturnedType { get; set; }
+            return (MemberInfoWrapper) (result.HasError ? null : result.Data);
+        }
 
-        public ICommand DoubleClickCommand { get; private set; }
-        
-        public ICommand SelectionChangedCommand { get; private set; }
+        public void SetValue(MemberInfoWrapper wrapper)
+        {
+            DebugModel.Instance.GetValue(wrapper, Commands.SetValue);
+        }
+
+        public IEnumerable<MemberInfoWrapper> LoadedTypes { get; set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -86,5 +69,9 @@ namespace DebugHelper
                 handler(this, new PropertyChangedEventArgs(propertyName));
             }
         }
+
+        public event EventHandler OnLoaded;
+
+        public string SelectedValue { get; set; }
     }
 }
