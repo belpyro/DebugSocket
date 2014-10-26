@@ -10,5 +10,7 @@ namespace SocketCommon
         GetTypes,
         GetChildren,
         GetCollection,
+        GetExternal,
+        SetValue
     }
 }

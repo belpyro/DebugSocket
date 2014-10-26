@@ -78,6 +78,7 @@
     <Compile Include="Comparers\TypeEqualityComparer.cs" />
     <Compile Include="DataRequest.cs" />
     <Compile Include="DataResponce.cs" />
+    <Compile Include="Events\ServerEvents.cs" />
     <Compile Include="Properties\Annotations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Wrappers\Tree\MemberInfoWrapper.cs" />

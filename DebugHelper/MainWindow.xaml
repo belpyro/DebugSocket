@@ -10,15 +10,30 @@
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height=".5*"/>
-            <RowDefinition Height=".5*"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
         <TextBox x:Name="CompleteBox" TextChanged="CompleteBox_OnTextChanged"/>
 
-        <TreeView Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Name="TypeTree">
-            
-        </TreeView>
+        <TreeView Grid.Row="1" Grid.Column="0" Name="TypeTree"/>
+        
+        <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal">
+            <Rectangle Fill="Firebrick" Margin="4" Width="24" Height="16"></Rectangle>
+            <TextBlock Text="Type" VerticalAlignment="Center"></TextBlock>
+            <Rectangle Fill="CornflowerBlue" Margin="4" Width="24" Height="16"></Rectangle>
+            <TextBlock Text="Field" VerticalAlignment="Center"></TextBlock>
+            <Rectangle Fill="DarkGreen" Margin="4" Width="24" Height="16"></Rectangle>
+            <TextBlock Text="Property" VerticalAlignment="Center"></TextBlock>
+            <Rectangle Fill="DarkOrange" Margin="4" Width="24" Height="16"></Rectangle>
+            <TextBlock Text="Collection" VerticalAlignment="Center"></TextBlock>
+        </StackPanel>
+        
+        <StackPanel Orientation="Horizontal" Grid.Column="1" Grid.Row="1" MaxHeight="40">
+            <TextBlock Text="{Binding ElementName=TypeTree, Path=SelectedItem.Header}" Margin="4" VerticalAlignment="Center"/>
+            <TextBox Text="{Binding SelectedValue, Mode=TwoWay}" MinWidth="160" Margin="4"/>
+            <Button Content="Set" Name="SetButton" Click="SetButton_OnClick" Margin="4" MinWidth="60"></Button>
+        </StackPanel>
         
         <!--<TreeView Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" ItemsSource="{Binding LoadedTypes}">
             <i:Interaction.Triggers>
@@ -38,9 +53,9 @@
             </TreeView.ItemTemplate>
         </TreeView>-->
 
-        <!--<Button Width="16" Height="16" Grid.Row="0" Grid.Column="1" Command="{Binding ElementName=FieldBox,Path=DataContext.DoubleClickCommand}" CommandParameter="{Binding}">
+        <Button Width="16" Height="16" Grid.Row="0" Grid.Column="1" Click="ButtonBase_OnClick">
             <Image Source="Images/refresh.png"/>
-        </Button>-->
+        </Button>
 
         <!--<ListBox Grid.Column="1" Grid.Row="1" x:Name="FieldBox" ItemsSource="{Binding ElementName=TypeBox, Path=SelectedItem.Members}"
                  DisplayMemberPath="Name">

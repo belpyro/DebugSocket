@@ -11,12 +11,13 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using SocketCommon;
 using SocketCommon.Comparers;
+using SocketCommon.Events;
 using SocketCommon.Wrappers.Tree;
 using UnityEngine;
 
 namespace SocketServer
 {
-    [KSPAddon(KSPAddon.Startup.MainMenu, false)]
+    [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public class Server : MonoBehaviour
     {
         private readonly Dictionary<string, string> _instantiateTypes = new Dictionary<string, string>();
@@ -24,12 +25,22 @@ namespace SocketServer
         private readonly object _o = new object();
         private TcpListener _listener;
 
+        private Part _externalPart;
+
         public void Start()
         {
             _instantiateTypes.Add(typeof(FlightGlobals).Name, "fetch");
 
+            ServerEvents.OnAttachToServer.Add(ServerAttached);
+
             var t = new Thread(StartServer);
             t.Start();
+        }
+
+        private void ServerAttached(Part data)
+        {
+            _externalPart = data;
+            Debug.Log("Server recieved");
         }
 
         private void StartServer()
@@ -70,7 +81,7 @@ namespace SocketServer
                                 }
                                 break;
                             case Commands.GetValue:
-                                var result = ParseKspValue(request.Info);//GetKspValue(request.Info);
+                                var result = ParseKspValue(request.Info);
                                 if (result != null)
                                 {
                                     responce = new DataResponce(false, new MemberInfoWrapper()
@@ -90,8 +101,22 @@ namespace SocketServer
                                 IEnumerable<MemberInfoWrapper> collection = GetCollection(request.Info);
                                 if (collection != null)
                                 {
-                                   responce = new DataResponce(false, collection); 
+                                    responce = new DataResponce(false, collection);
                                 }
+                                break;
+                            case Commands.GetExternal:
+                                if (_externalPart != null)
+                                {
+                                    responce = new DataResponce(false, new MemberInfoWrapper()
+                                    {
+                                        Name = _externalPart.GetType().Name,
+                                        ParentType = _externalPart.GetType().Name,
+                                        ItemType = MemberType.Type
+                                    });
+                                }
+                                break;
+                            case Commands.SetValue:
+                                ParseKspValue(request.Info);
                                 break;
                             default:
                                 throw new ArgumentOutOfRangeException();
@@ -138,7 +163,7 @@ namespace SocketServer
 
             var i = 0;
 
-            foreach (var item in (IEnumerable) source)
+            foreach (var item in (IEnumerable)source)
             {
                 if (_types.ContainsKey(item.GetType().Name) && !IsSimpleType(item.GetType()))
                 {
@@ -149,7 +174,7 @@ namespace SocketServer
                         ParentType = info.TypeName,
                         ItemType = MemberType.Type,
                         Index = i
-                    }); 
+                    });
                 }
                 else
                 {
@@ -160,7 +185,7 @@ namespace SocketServer
                         ItemType = MemberType.Property,
                         TypeName = item.GetType().Name,
                         Index = i
-                    }); 
+                    });
                 }
 
                 i++;
@@ -225,7 +250,15 @@ namespace SocketServer
 
             items.Reverse();
 
-            return GetKspValue(items);
+            if (data.Value == null)
+            {
+                return GetKspValue(items);
+            }
+            else
+            {
+                SetKspValue(items);
+                return "ok";
+            }
         }
 
         private object GetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
@@ -269,6 +302,28 @@ namespace SocketServer
                     return GetKspValue(wrappers, null, type);
                 }
 
+                //collection
+
+                if (instance != null)
+                {
+                    var parentType = instance.GetType();
+
+                    if (parentType.GetInterfaces().Contains(typeof(IEnumerable)))
+                    {
+                        Debug.Log("Object is indexed ");
+
+                        var indexedProp = parentType.GetProperties().Where(x => x.GetIndexParameters().Any()).FirstOrDefault(x =>
+                            x.GetIndexParameters().All(m => m.ParameterType.IsPrimitive));
+
+                        if (indexedProp != null)
+                        {
+                            var value = indexedProp.GetValue(instance, new object[] { first.Index });
+                            return wrappers.Any() ? GetKspValue(wrappers, value, indexedProp.PropertyType) : value;
+                        }
+                    }
+                }
+
+
                 var field = parent.GetField(first.Name);
 
                 if (field != null)
@@ -304,6 +359,159 @@ namespace SocketServer
             }
         }
 
+        private void SetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
+        {
+            if (wrappers == null || !wrappers.Any()) return;
+
+            var first = wrappers.FirstOrDefault();
+
+            Debug.Log("First item " + first.Name);
+
+            wrappers = wrappers.Skip(1).ToList();
+
+            try
+            {
+                if (parent == null)
+                {
+                    if (!_types.ContainsKey(first.TypeName)) return;
+
+                    var type = _types[first.TypeName];
+
+                    Debug.Log("Get type " + type.Name);
+
+                    if (_instantiateTypes.ContainsKey(type.Name))
+                    {
+                        var instanceField = type.GetField(_instantiateTypes[type.Name]);
+
+                        if (instanceField == null)
+                        {
+                            var instanceProp = type.GetProperty(_instantiateTypes[type.Name]);
+
+                            if (instanceProp == null) return;
+
+                            SetKspValue(wrappers, instanceProp.GetValue(null, null), type);
+                        }
+
+                        var dataInstance = instanceField.GetValue(null);
+
+                        SetKspValue(wrappers, dataInstance, type);
+                    }
+
+                    SetKspValue(wrappers, null, type);
+                }
+
+                //collection
+
+                if (instance != null)
+                {
+                    var parentType = instance.GetType();
+
+                    if (parentType.GetInterfaces().Contains(typeof(IEnumerable)))
+                    {
+                        Debug.Log("Object is indexed ");
+
+                        var indexedProp = parentType.GetProperties().Where(x => x.GetIndexParameters().Any()).FirstOrDefault(x =>
+                            x.GetIndexParameters().All(m => m.ParameterType.IsPrimitive));
+
+                        if (indexedProp != null)
+                        {
+                            var value = indexedProp.GetValue(instance, new object[] { first.Index });
+
+                            if (wrappers.Any())
+                                SetKspValue(wrappers, value, indexedProp.PropertyType);
+                        }
+                    }
+                }
+
+
+                var field = parent.GetField(first.Name);
+
+                if (field != null)
+                {
+                    Debug.Log("Get field " + field.Name);
+
+                    var value = field.IsStatic ? field.GetValue(null) : instance != null ? field.GetValue(instance) : null;
+
+                    Debug.Log("Get field value " + value);
+
+                    if (wrappers.Any())
+                    {
+                        SetKspValue(wrappers, value, field.FieldType);
+                    }
+                    else
+                    {
+                        var data = ConvertValue(field.FieldType, first.Value);
+
+                        if (data != null)
+                        {
+                            field.SetValue(field.IsStatic ? null : instance, data);
+                        }
+                    }
+                }
+
+                var prop = parent.GetProperty(first.Name);
+
+                if (prop != null)
+                {
+                    Debug.Log("Get prop " + prop.Name);
+
+                    var value = prop.GetGetMethod().IsStatic ? prop.GetValue(null, null) : instance != null ? prop.GetValue(instance, null) : null;
+
+                    Debug.Log("Get prop value " + value);
+
+                    if (wrappers.Any())
+                    {
+                        SetKspValue(wrappers, value, prop.PropertyType);
+                    }
+                    else
+                    {
+                        var data = ConvertValue(prop.PropertyType, first.Value);
+
+                        if (data != null)
+                        {
+                            prop.SetValue(prop.GetGetMethod().IsStatic ? null : instance, data, null);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+        }
+
+        private object ConvertValue(Type t, object o)
+        {
+            try
+            {
+                if (t == typeof(bool))
+                {
+                    return bool.Parse(o.ToString());
+                }
+
+                if (t == typeof(Single))
+                {
+                    return Single.Parse(o.ToString());
+                }
+
+                if (t == typeof(double))
+                {
+                    return double.Parse(o.ToString());
+                }
+
+                if (t == typeof(string))
+                {
+                    return o.ToString();
+                }
+
+                return null;
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return null;
+            }
+        }
 
         private bool GetKspType(string typeName)
         {
@@ -330,6 +538,31 @@ namespace SocketServer
             lock (_o)
             {
                 Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+                IEnumerable<string> externalAssemblies = GetExternalAssemblies();
+
+                foreach (var externalAssembly in externalAssemblies)
+                {
+
+                    Debug.Log("External type " + externalAssembly);
+
+                    List<Type> externalTypes =
+                     assemblies.Where(x => x.FullName.Contains(externalAssembly))
+                         .SelectMany(x => x.GetTypes()).Where(x => !x.IsInterface && !x.IsAbstract)
+                         .Where(x => Regex.IsMatch(x.Name, "^[A-Za-z0-9]{3,}$", RegexOptions.IgnoreCase))
+                         .OrderBy(x => x.Name)
+                         .Distinct(new TypeEqualityComparer())
+                         .ToList();
+
+                    foreach (var type in externalTypes)
+                    {
+                        Debug.Log("loaded External type " + type.FullName);
+
+                        if (_types.ContainsKey(type.Name)) continue;
+
+                        _types.Add(type.Name, type);
+                    }
+                }
 
                 List<Type> types =
                     assemblies.Where(x => x.FullName.Contains("Assembly-CSharp"))
@@ -370,6 +603,11 @@ namespace SocketServer
             }
         }
 
+        private IEnumerable<string> GetExternalAssemblies()
+        {
+            return File.Exists(@"e:\KSP_Dev\GameData\Server\assemblies.txt") ? File.ReadAllLines(@"e:\KSP_Dev\GameData\Server\assemblies.txt").ToList() : new List<string>();
+        }
+
         private DataRequest GetDataRequest(byte[] data)
         {
             lock (_o)
@@ -381,10 +619,13 @@ namespace SocketServer
 
         public void OnDestroy()
         {
+            ServerEvents.OnAttachToServer.Remove(ServerAttached);
+
             if (_listener != null)
             {
                 _listener.Stop();
             }
         }
+
     }
 }

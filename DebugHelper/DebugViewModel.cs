@@ -13,7 +13,6 @@ namespace DebugHelper
 
     public class DebugViewModel : INotifyPropertyChanged
     {
-
         public void LoadKspTypes()
         {
             var result = DebugModel.Instance.GetValue(null, Commands.GetTypes);
@@ -45,6 +44,17 @@ namespace DebugHelper
 
             return (IEnumerable<MemberInfoWrapper>) (result.HasError ? null : result.Data);
         }
+        public MemberInfoWrapper GetExternalWrapper()
+        {
+            DataResponce result = DebugModel.Instance.GetValue(null, Commands.GetExternal);
+
+            return (MemberInfoWrapper) (result.HasError ? null : result.Data);
+        }
+
+        public void SetValue(MemberInfoWrapper wrapper)
+        {
+            DebugModel.Instance.GetValue(wrapper, Commands.SetValue);
+        }
 
         public IEnumerable<MemberInfoWrapper> LoadedTypes { get; set; }
 
@@ -61,5 +71,7 @@ namespace DebugHelper
         }
 
         public event EventHandler OnLoaded;
+
+        public string SelectedValue { get; set; }
     }
 }

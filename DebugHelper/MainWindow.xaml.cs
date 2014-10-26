@@ -107,6 +107,12 @@ namespace DebugHelper
                         throw new ArgumentOutOfRangeException();
                 }
 
+                if (wrapper.IsStatic)
+                {
+                    dataItem.FontWeight = FontWeights.SemiBold;
+                    dataItem.FontStyle = FontStyles.Italic;
+                }
+
                 dataItem.Items.Add(new TreeViewItem() { Header = "Loading..." });
 
                 item.Items.Add(dataItem);
@@ -147,6 +153,28 @@ namespace DebugHelper
                     ? Visibility.Visible
                     : Visibility.Collapsed;
             }
+        }
+
+        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
+        {
+            TypeTree.Items.Clear();
+
+            var result = model.GetExternalWrapper();
+        }
+
+        private void SetButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            var item = TypeTree.SelectedItem as TreeViewItem;
+
+            if (item == null) return;
+
+            var info = item.Tag as MemberInfoWrapper;
+
+            if (info == null) return;
+
+            info.Value = model.SelectedValue;
+
+            model.SetValue(info);
         }
     }
 }
