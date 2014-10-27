@@ -12,6 +12,7 @@ using System.Threading;
 using SocketCommon;
 using SocketCommon.Comparers;
 using SocketCommon.Events;
+using SocketCommon.Helpers;
 using SocketCommon.Wrappers.Tree;
 using UnityEngine;
 
@@ -25,11 +26,26 @@ namespace SocketServer
         private readonly object _o = new object();
         private TcpListener _listener;
 
+        private const string ASSEMBLY_FILE_NAME = "assemblies.txt";
+        private const string INSTANTIATE_FILE_NAME = "instances.txt";
+
         private Part _externalPart;
+
+        //private Logger _fileLogger;
+        //private Logger _networkLogger;
 
         public void Start()
         {
-            _instantiateTypes.Add(typeof(FlightGlobals).Name, "fetch");
+            //InitializeLogger();
+
+            //_fileLogger = LogManager.GetLogger("FileTarget");
+
+            //if (_fileLogger != null)
+            //{
+            //    _fileLogger.Log(LogLevel.Info, "test logger");
+            //}
+
+            ConfigureInstantiateAssemblies();
 
             ServerEvents.OnAttachToServer.Add(ServerAttached);
 
@@ -37,11 +53,21 @@ namespace SocketServer
             t.Start();
         }
 
-        private void ServerAttached(Part data)
-        {
-            _externalPart = data;
-            Debug.Log("Server recieved");
-        }
+        //private void InitializeLogger()
+        //{
+        //    var configuration = new LoggingConfiguration();
+
+        //    var fTarget = new FileTarget()
+        //    {
+        //        CreateDirs = true,
+        //        DeleteOldFileOnStartup = true,
+        //        FileName = "${basedir}/logs/server.log"
+        //    };
+
+        //    configuration.AddTarget("f", fTarget);
+
+        //    //LogManager.Configuration = configuration;
+        //}
 
         private void StartServer()
         {
@@ -69,6 +95,9 @@ namespace SocketServer
 
                         switch (request.Command)
                         {
+                            case Commands.CheckConnection:
+                                responce = new DataResponce(false, "ok");
+                                break;
                             case Commands.GetTypes:
                                 try
                                 {
@@ -94,15 +123,24 @@ namespace SocketServer
                                 }
                                 break;
                             case Commands.GetChildren:
-                                object children = GetChildren(request.Info);
+                                var children = GetChildren(request.Info);
                                 responce = new DataResponce(false, children);
                                 break;
                             case Commands.GetCollection:
-                                IEnumerable<MemberInfoWrapper> collection = GetCollection(request.Info);
+                                var collection = GetCollection(request.Info);
                                 if (collection != null)
                                 {
                                     responce = new DataResponce(false, collection);
                                 }
+                                break;
+                            case Commands.GetMethods:
+                                var methods = GetMethods(request.Info);
+
+                                if (methods != null)
+                                {
+                                    responce = new DataResponce(false, methods);
+                                }
+
                                 break;
                             case Commands.GetExternal:
                                 if (_externalPart != null)
@@ -110,9 +148,16 @@ namespace SocketServer
                                     responce = new DataResponce(false, new MemberInfoWrapper()
                                     {
                                         Name = _externalPart.GetType().Name,
-                                        ParentType = _externalPart.GetType().Name,
                                         ItemType = MemberType.Type
                                     });
+                                }
+                                break;
+                            case Commands.GetGameEvents:
+                                var events = GetEvents();
+                                
+                                if (events != null)
+                                {
+                                    responce = new DataResponce(false, events);
                                 }
                                 break;
                             case Commands.SetValue:
@@ -152,11 +197,32 @@ namespace SocketServer
             }
         }
 
+        #region Commands
+
+        private IEnumerable<MemberInfoWrapper> GetEvents()
+        {
+            try
+            {
+                var fields = typeof(GameEvents).GetFields(BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.Static |
+                                          BindingFlags.Public).Select(x => x.ConvertToWrapper(false)).ToList();
+
+                fields.ForEach(x => x.ItemType = MemberType.GameEvent);
+
+                return fields;
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                return null;
+            }
+        }
+
         private IEnumerable<MemberInfoWrapper> GetCollection(MemberInfoWrapper info)
         {
             var result = new List<MemberInfoWrapper>();
 
             var source = ParseKspValue(info);
+
             if (source == null) return null;
 
             if (!source.GetType().GetInterfaces().Contains(typeof(IEnumerable))) return null;
@@ -171,7 +237,6 @@ namespace SocketServer
                     {
                         Name = item.GetType().Name,
                         TypeName = item.GetType().Name,
-                        ParentType = info.TypeName,
                         ItemType = MemberType.Type,
                         Index = i
                     });
@@ -181,7 +246,6 @@ namespace SocketServer
                     result.Add(new MemberInfoWrapper()
                     {
                         Name = item.GetType().Name,
-                        ParentType = info.TypeName,
                         ItemType = MemberType.Property,
                         TypeName = item.GetType().Name,
                         Index = i
@@ -194,80 +258,33 @@ namespace SocketServer
             return result;
         }
 
-        private object GetChildren(MemberInfoWrapper info)
+        private IEnumerable<MemberInfoWrapper> GetChildren(MemberInfoWrapper info)
         {
-            if (!_types.ContainsKey(info.TypeName) && !GetKspType(info.ParentType))
-                return new DataResponce(true, string.Format("Types does not contain type {0}", info.TypeName));
+            if (!_types.ContainsKey(info.TypeName) && !GetKspType(info.Parent))
+                return null;
 
             var children = new List<MemberInfoWrapper>();
 
             var type = _types[info.TypeName];
 
-            var fields = type.GetFields().Select(x => new MemberInfoWrapper()
-            {
-                Name = x.Name,
-                ItemType = (x.FieldType.IsClass || x.FieldType.IsValueType) && !IsSimpleType(x.FieldType) ? x.FieldType.GetInterfaces().Contains(typeof(IEnumerable)) ? MemberType.Collection : MemberType.Type : MemberType.Field,
-                TypeName = x.FieldType.Name,
-                ParentType = type.Name,
-                IsStatic = x.IsStatic
-            }).ToList();
+            var fields = type.GetFields().Select(x => x.ConvertToWrapper(!IsSimpleType(x.FieldType))).ToList();
 
-            var props = type.GetProperties().Select(x => new MemberInfoWrapper()
-            {
-                Name = x.Name,
-                TypeName = x.PropertyType.Name,
-                ItemType =
-                    (x.PropertyType.IsClass || x.PropertyType.IsValueType) && !IsSimpleType(x.PropertyType) ? x.PropertyType.GetInterfaces().Contains(typeof(IEnumerable)) ? MemberType.Collection : MemberType.Type : MemberType.Property,
-                ParentType = type.Name,
-                IsStatic = x.GetGetMethod().IsStatic
-            }).ToList();
+            var props = type.GetProperties().Select(x => x.ConvertToWrapper(IsSimpleType(x.PropertyType))).ToList();
 
             children.AddRange(fields);
+
             children.AddRange(props);
 
             return children.OrderBy(x => x.Name).ToList();
-        }
-
-        private bool IsSimpleType(Type t)
-        {
-            return t.IsPrimitive || t == typeof(string) ||
-                   t == typeof(Guid) || t.IsEnum || t == typeof(Vector3) || t == typeof(Vector3d) || t == typeof(Quaternion) ||
-                   t == typeof(Vector2) || t == typeof(Vector2d);
-
-        }
-
-        private object ParseKspValue(MemberInfoWrapper data)
-        {
-            var items = new List<MemberInfoWrapper>();
-
-            MemberInfoWrapper item = data;
-
-            while (item != null)
-            {
-                items.Add(item);
-                item = item.Parent;
-            }
-
-            items.Reverse();
-
-            if (data.Value == null)
-            {
-                return GetKspValue(items);
-            }
-            else
-            {
-                SetKspValue(items);
-                return "ok";
-            }
         }
 
         private object GetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
         {
             if (wrappers == null || !wrappers.Any()) return null;
 
-            var first = wrappers.FirstOrDefault();
+            var currentWrapper = wrappers.FirstOrDefault();
 
-            Debug.Log("First item " + first.Name);
+            Debug.Log("First item " + currentWrapper.Name);
 
             wrappers = wrappers.Skip(1).ToList();
 
@@ -275,9 +292,9 @@ namespace SocketServer
             {
                 if (parent == null)
                 {
-                    if (!_types.ContainsKey(first.TypeName)) return null;
+                    if (!_types.ContainsKey(currentWrapper.TypeName)) return null;
 
-                    var type = _types[first.TypeName];
+                    var type = _types[currentWrapper.TypeName];
 
                     Debug.Log("Get type " + type.Name);
 
@@ -317,14 +334,14 @@ namespace SocketServer
 
                         if (indexedProp != null)
                         {
-                            var value = indexedProp.GetValue(instance, new object[] { first.Index });
+                            var value = indexedProp.GetValue(instance, new object[] { currentWrapper.Index });
                             return wrappers.Any() ? GetKspValue(wrappers, value, indexedProp.PropertyType) : value;
                         }
                     }
                 }
 
 
-                var field = parent.GetField(first.Name);
+                var field = parent.GetField(currentWrapper.Name);
 
                 if (field != null)
                 {
@@ -337,7 +354,7 @@ namespace SocketServer
                     return wrappers.Any() ? GetKspValue(wrappers, value, field.FieldType) : value;
                 }
 
-                var prop = parent.GetProperty(first.Name);
+                var prop = parent.GetProperty(currentWrapper.Name);
 
                 if (prop != null)
                 {
@@ -480,6 +497,94 @@ namespace SocketServer
             }
         }
 
+        private IEnumerable<MemberInfoWrapper> GetAllTypes()
+        {
+            lock (_o)
+            {
+                Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+                IEnumerable<string> externalAssemblies = GetExternalAssemblies();
+
+                var comparer = new TypeEqualityComparer();
+
+                foreach (var externalAssembly in externalAssemblies)
+                {
+
+                    Debug.Log("External type " + externalAssembly);
+
+                    List<Type> externalTypes =
+                     assemblies.Where(x => x.FullName.Contains(externalAssembly))
+                         .SelectMany(x => x.GetTypes()).Where(x => !x.IsInterface && !x.IsAbstract)
+                         .Where(x => Regex.IsMatch(x.Name, "^[A-Za-z0-9]{3,}$", RegexOptions.IgnoreCase))
+                         .OrderBy(x => x.Name)
+                         .Distinct(comparer)
+                         .ToList();
+
+                    externalTypes.ForEach(x => { if (!_types.ContainsKey(x.Name)) { _types.Add(x.Name, x); } });
+                }
+
+                return _types.Select(x => new MemberInfoWrapper
+                {
+                    Name = x.Key,
+                    TypeName = x.Key,
+                    ItemType = MemberType.Type,
+                }).ToList();
+            }
+        }
+
+        private IEnumerable<MethodInfoWrapper> GetMethods(MemberInfoWrapper wrapper)
+        {
+            if (!_types.ContainsKey(wrapper.TypeName)) return null;
+
+            var wrappers = new List<MethodInfoWrapper>();
+
+            var methods = _types[wrapper.TypeName].GetMethods(BindingFlags.Static | BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.Public).ToList();
+
+            wrappers.AddRange(methods.Select(x => x.ConvertToWrapper()));
+
+            return wrappers;
+        }
+
+        private bool AttachToEvent()
+        {
+            return false;
+        }
+
+        #endregion
+
+        #region DataHelpers
+
+        private bool IsSimpleType(Type t)
+        {
+            return t.IsPrimitive || t == typeof(string) ||
+                   t == typeof(Guid) || t.IsEnum || t == typeof(Vector3) || t == typeof(Vector3d) || t == typeof(Quaternion) ||
+                   t == typeof(Vector2) || t == typeof(Vector2d);
+
+        }
+
+        private object ParseKspValue(MemberInfoWrapper data)
+        {
+            var items = new List<MemberInfoWrapper>();
+
+            MemberInfoWrapper item = data;
+
+            while (item != null)
+            {
+                items.Add(item);
+                item = item.Parent;
+            }
+
+            items.Reverse();
+
+            if (data.Value == null)
+            {
+                return GetKspValue(items);
+            }
+
+            SetKspValue(items);
+            return "ok";
+        }
+
         private object ConvertValue(Type t, object o)
         {
             try
@@ -513,18 +618,18 @@ namespace SocketServer
             }
         }
 
-        private bool GetKspType(string typeName)
+        private bool GetKspType(MemberInfoWrapper parent)
         {
-            if (string.IsNullOrEmpty(typeName))
+            if (parent == null)
             {
                 return false;
             }
 
-            if (_types.ContainsKey(typeName)) return true;
+            if (_types.ContainsKey(parent.TypeName)) return true;
 
             var t = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(x => x.GetTypes())
-                .FirstOrDefault(y => y.Name.Equals(typeName));
+                .FirstOrDefault(y => y.Name.Equals(parent.TypeName));
 
             if (t == null) return false;
 
@@ -533,80 +638,32 @@ namespace SocketServer
             return true;
         }
 
-        private object GetAllTypes()
-        {
-            lock (_o)
-            {
-                Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-
-                IEnumerable<string> externalAssemblies = GetExternalAssemblies();
-
-                foreach (var externalAssembly in externalAssemblies)
-                {
-
-                    Debug.Log("External type " + externalAssembly);
-
-                    List<Type> externalTypes =
-                     assemblies.Where(x => x.FullName.Contains(externalAssembly))
-                         .SelectMany(x => x.GetTypes()).Where(x => !x.IsInterface && !x.IsAbstract)
-                         .Where(x => Regex.IsMatch(x.Name, "^[A-Za-z0-9]{3,}$", RegexOptions.IgnoreCase))
-                         .OrderBy(x => x.Name)
-                         .Distinct(new TypeEqualityComparer())
-                         .ToList();
-
-                    foreach (var type in externalTypes)
-                    {
-                        Debug.Log("loaded External type " + type.FullName);
-
-                        if (_types.ContainsKey(type.Name)) continue;
-
-                        _types.Add(type.Name, type);
-                    }
-                }
-
-                List<Type> types =
-                    assemblies.Where(x => x.FullName.Contains("Assembly-CSharp"))
-                        .SelectMany(x => x.GetTypes()).Where(x => !x.IsInterface && !x.IsAbstract)
-                        .Where(x => Regex.IsMatch(x.Name, "^[A-Za-z0-9]{3,}$", RegexOptions.IgnoreCase))
-                        .OrderBy(x => x.Name)
-                        .Distinct(new TypeEqualityComparer())
-                        .ToList();
-
-                List<Type> unityTypes =
-                    assemblies.Where(x => x.FullName.Contains("UnityEngine"))
-                        .SelectMany(x => x.GetTypes())
-                        .Where(x => Regex.IsMatch(x.Name, "^[A-Za-z0-9]{3,}$", RegexOptions.IgnoreCase))
-                        .OrderBy(x => x.Name)
-                        .Distinct(new TypeEqualityComparer())
-                        .ToList();
-
-                foreach (var type in types)
-                {
-                    if (_types.ContainsKey(type.Name)) continue;
-
-                    _types.Add(type.Name, type);
-                }
-
-                foreach (var type in unityTypes)
-                {
-                    if (_types.ContainsKey(type.Name)) continue;
-
-                    _types.Add(type.Name, type);
-                }
-
-                return types.Select(x => new MemberInfoWrapper
-                {
-                    Name = x.Name,
-                    TypeName = x.Name,
-                    ItemType = MemberType.Type,
-                }).ToList();
-            }
-        }
-
         private IEnumerable<string> GetExternalAssemblies()
         {
-            return File.Exists(@"e:\KSP_Dev\GameData\Server\assemblies.txt") ? File.ReadAllLines(@"e:\KSP_Dev\GameData\Server\assemblies.txt").ToList() : new List<string>();
+            var filePath = Path.Combine(GetCurrentDirectory(), ASSEMBLY_FILE_NAME);
+            return File.Exists(filePath) ? File.ReadAllLines(filePath).ToList() : new List<string>();
         }
+
+        private void ConfigureInstantiateAssemblies()
+        {
+            var filePath = Path.Combine(GetCurrentDirectory(), INSTANTIATE_FILE_NAME);
+            if (!File.Exists(filePath)) return;
+
+            var items = File.ReadAllLines(filePath);
+
+            var parsedItems = items.Select(x => x.Split(',')).ToList();
+
+            parsedItems.ForEach(x => _instantiateTypes.Add(x.First(), x.Last()));
+        }
+
+        private string GetCurrentDirectory()
+        {
+            return Path.GetDirectoryName(GetType().Assembly.Location);
+        }
+
+        #endregion
+
+        #region Request helpers
 
         private DataRequest GetDataRequest(byte[] data)
         {
@@ -617,6 +674,20 @@ namespace SocketServer
             }
         }
 
+        #endregion
+
+        #region External attach
+
+        private void ServerAttached(Part data)
+        {
+            _externalPart = data;
+            Debug.Log("Server recieved");
+        }
+
+        #endregion
+
+        #region Mono
+
         public void OnDestroy()
         {
             ServerEvents.OnAttachToServer.Remove(ServerAttached);
@@ -626,6 +697,8 @@ namespace SocketServer
                 _listener.Stop();
             }
         }
+
+        #endregion
 
     }
 }

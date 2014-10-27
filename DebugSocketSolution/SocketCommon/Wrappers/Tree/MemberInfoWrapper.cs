@@ -57,8 +57,6 @@ namespace SocketCommon.Wrappers.Tree
             }
         }
 
-        public string ParentType { get; set; }
-
         public bool IsStatic { get; set; }
 
         public MemberInfoWrapper Parent { get; set; }

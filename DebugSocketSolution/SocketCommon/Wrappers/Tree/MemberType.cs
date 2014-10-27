@@ -6,6 +6,7 @@
         Property,
         Type,
         Value,
-        Collection
+        Collection,
+        GameEvent
     }
 }

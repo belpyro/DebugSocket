@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Windows;
@@ -20,13 +21,28 @@ namespace DebugHelper
     /// </summary>
     public partial class MainWindow : Window
     {
-        private DebugViewModel model;
+        private DebugViewModel _model;
+
+        private readonly BackgroundWorker _loadingWorker = new BackgroundWorker();
 
         public MainWindow()
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
             AddHandler(TreeViewItem.ExpandedEvent, new RoutedEventHandler(ItemExpanded), true);
+            _loadingWorker.DoWork += _loadingWorker_DoWork;
+            _loadingWorker.RunWorkerCompleted += _loadingWorker_RunWorkerCompleted;
+        }
+
+        void _loadingWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            TypesLoaded();
+            Indicator.IsBusy = false; 
+        }
+
+        void _loadingWorker_DoWork(object sender, DoWorkEventArgs e)
+        {
+            _model.LoadKspTypes();
         }
 
         private void ItemExpanded(object sender, RoutedEventArgs e)
@@ -43,17 +59,17 @@ namespace DebugHelper
             {
                 case MemberType.Field:
                 case MemberType.Property:
-                    var data = model.GetKspValue(info) as MemberInfoWrapper;
+                    var data = _model.GetKspValue(info) as MemberInfoWrapper;
                     FillItemValue(item, data);
                     break;
                 case MemberType.Type:
-                    var children = model.GetChildren(info);
+                    var children = _model.GetChildren(info);
                     FillItemByChildren(item, children);
                     break;
                 case MemberType.Value:
                     break;
                 case MemberType.Collection:
-                    var items = model.GetKspCollection(info);
+                    var items = _model.GetKspCollection(info);
                     FillItemByChildren(item, items);
                     break;
                 default:
@@ -79,7 +95,7 @@ namespace DebugHelper
             {
                 item.Header = string.Format("Member {0} not exist", item.Header);
                 return;
-            } 
+            }
 
             foreach (var wrapper in data)
             {
@@ -119,28 +135,25 @@ namespace DebugHelper
 
             }
         }
-        
+
         void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            model = new DebugViewModel();
-            model.OnLoaded += model_OnLoaded;
-            DataContext = model;
-            model.LoadKspTypes();
+            _model = new DebugViewModel();
+            DataContext = _model;
         }
 
-        void model_OnLoaded(object sender, EventArgs e)
+        void TypesLoaded()
         {
-            if (model.LoadedTypes == null || !model.LoadedTypes.Any()) return;
+            if (_model.LoadedTypes == null || !_model.LoadedTypes.Any()) return;
 
             TypeTree.Items.Clear();
 
-            foreach (var item in model.LoadedTypes.Select(wrapper => new TreeViewItem() { Header = wrapper.Name, Tag = wrapper }))
+            foreach (var item in _model.LoadedTypes.Select(wrapper => new TreeViewItem() { Header = wrapper.Name, Tag = wrapper }))
             {
                 item.Items.Add(new TreeViewItem() { Header = "Loading..." });
 
                 TypeTree.Items.Add(item);
             }
-
         }
 
         private void CompleteBox_OnTextChanged(object sender, RoutedEventArgs e)
@@ -157,9 +170,10 @@ namespace DebugHelper
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
-            TypeTree.Items.Clear();
-
-            var result = model.GetExternalWrapper();
+            if (_loadingWorker.IsBusy) return;
+            
+            Indicator.IsBusy = true;
+            _loadingWorker.RunWorkerAsync();
         }
 
         private void SetButton_OnClick(object sender, RoutedEventArgs e)
@@ -172,9 +186,32 @@ namespace DebugHelper
 
             if (info == null) return;
 
-            info.Value = model.SelectedValue;
+            info.Value = _model.SelectedValue;
 
-            model.SetValue(info);
+            _model.SetValue(info);
+        }
+
+        private void MethodsButton_OnClick(object sender, RoutedEventArgs e)
+        {           
+            var item = TypeTree.SelectedItem as TreeViewItem;
+
+            if (item == null) return;
+
+            var info = item.Tag as MemberInfoWrapper;
+
+            if (info == null) return;
+
+            MethodItem.DataContext = _model.GetMethods(info);
+        }
+
+        private void EventsButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            EventItem.DataContext = _model.GetGameEvents();
+        }
+
+        private void AttachEvent_Click(object sender, RoutedEventArgs e)
+        {
+            var item = (sender as Button).DataContext;
         }
     }
 }

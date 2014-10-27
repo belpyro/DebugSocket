@@ -51,6 +51,20 @@ namespace DebugHelper
             return (MemberInfoWrapper) (result.HasError ? null : result.Data);
         }
 
+        public IEnumerable<MethodInfoWrapper> GetMethods(MemberInfoWrapper wrapper)
+        {
+           DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetMethods);
+
+           return (IEnumerable<MethodInfoWrapper>)(result.HasError ? null : result.Data);
+        }
+
+        public IEnumerable<MemberInfoWrapper> GetGameEvents()
+        {
+           DataResponce result = DebugModel.Instance.GetValue(null, Commands.GetGameEvents);
+
+           return (IEnumerable<MemberInfoWrapper>)(result.HasError ? null : result.Data);
+        }
+
         public void SetValue(MemberInfoWrapper wrapper)
         {
             DebugModel.Instance.GetValue(wrapper, Commands.SetValue);
