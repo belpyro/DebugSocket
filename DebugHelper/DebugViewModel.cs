@@ -69,6 +69,10 @@ namespace DebugHelper
         {
             DebugModel.Instance.GetValue(wrapper, Commands.SetValue);
         }
+        public void AttachToEvent(MemberInfoWrapper wrapper)
+        {
+            DebugModel.Instance.GetValue(wrapper, Commands.EventAttach);
+        }
 
         public IEnumerable<MemberInfoWrapper> LoadedTypes { get; set; }
 

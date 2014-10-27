@@ -212,6 +212,7 @@ namespace DebugHelper
         private void AttachEvent_Click(object sender, RoutedEventArgs e)
         {
             var item = (sender as Button).DataContext;
+            _model.AttachToEvent((MemberInfoWrapper) item);
         }
     }
 }

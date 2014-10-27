@@ -154,11 +154,14 @@ namespace SocketServer
                                 break;
                             case Commands.GetGameEvents:
                                 var events = GetEvents();
-                                
+
                                 if (events != null)
                                 {
                                     responce = new DataResponce(false, events);
                                 }
+                                break;
+                            case Commands.EventAttach:
+                                EventSubscriber.Subscribe(request.Info.Name);
                                 break;
                             case Commands.SetValue:
                                 ParseKspValue(request.Info);
@@ -204,11 +207,11 @@ namespace SocketServer
             try
             {
                 var fields = typeof(GameEvents).GetFields(BindingFlags.DeclaredOnly | BindingFlags.Instance | BindingFlags.Static |
-                                          BindingFlags.Public).Select(x => x.ConvertToWrapper(false)).ToList();
+                                          BindingFlags.Public).Where(x => !x.FieldType.IsPrimitive).Select(x => x.ConvertToWrapper(false)).ToList();
 
                 fields.ForEach(x => x.ItemType = MemberType.GameEvent);
 
-                return fields;
+                return fields.OrderBy(x => x.Name).ToList();
             }
             catch (Exception e)
             {
@@ -543,11 +546,6 @@ namespace SocketServer
             wrappers.AddRange(methods.Select(x => x.ConvertToWrapper()));
 
             return wrappers;
-        }
-
-        private bool AttachToEvent()
-        {
-            return false;
         }
 
         #endregion
