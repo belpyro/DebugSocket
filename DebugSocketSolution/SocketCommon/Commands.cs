@@ -15,6 +15,7 @@ namespace SocketCommon
         GetMethods,
         GetGameEvents,
         SetValue,
-        EventAttach
+        EventAttach,
+        EventDetach
     }
 }

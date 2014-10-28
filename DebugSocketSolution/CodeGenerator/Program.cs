@@ -19,7 +19,7 @@ namespace CodeGenerator
 
             var codeType = new CodeTypeDeclaration("EventSubscriber")
             {
-                Attributes = MemberAttributes.Public | MemberAttributes.Static
+                Attributes = MemberAttributes.Public
             };
 
             codeNamespace.Types.Add(codeType);
@@ -37,8 +37,8 @@ namespace CodeGenerator
             methodAdd.Parameters.Add(prm);
             methodRemove.Parameters.Add(prm);
             
-            methodAdd.Attributes = MemberAttributes.Final | MemberAttributes.Public | MemberAttributes.Static;
-            methodRemove.Attributes = MemberAttributes.Final | MemberAttributes.Public | MemberAttributes.Static;
+            methodAdd.Attributes = MemberAttributes.Public | MemberAttributes.Final;
+            methodRemove.Attributes = MemberAttributes.Public | MemberAttributes.Final;
 
             codeType.Members.Add(methodAdd);
             codeType.Members.Add(methodRemove);
@@ -74,7 +74,7 @@ namespace CodeGenerator
                 methodRemove.Statements.Add(condition);
 
 
-                var executedMethod = new CodeMemberMethod {Name = fieldInfo.Name, Attributes = MemberAttributes.Static};
+                var executedMethod = new CodeMemberMethod {Name = fieldInfo.Name, Attributes = MemberAttributes.Final};
 
                 codeType.Members.Add(executedMethod);
 

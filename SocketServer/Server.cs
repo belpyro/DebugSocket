@@ -93,6 +93,8 @@ namespace SocketServer
 
                         DataResponce responce = null;
 
+                        LogClient.Instance.Send(string.Format("Command {0} recieved", request.Command));
+                        
                         switch (request.Command)
                         {
                             case Commands.CheckConnection:
@@ -161,7 +163,10 @@ namespace SocketServer
                                 }
                                 break;
                             case Commands.EventAttach:
-                                EventSubscriber.Subscribe(request.Info.Name);
+                                EventSubscriber.Instance.Subscribe(request.Info.Name);
+                                break;
+                            case Commands.EventDetach:
+                                EventSubscriber.Instance.UnSubscribe(request.Info.Name);
                                 break;
                             case Commands.SetValue:
                                 ParseKspValue(request.Info);
@@ -189,6 +194,7 @@ namespace SocketServer
             catch (Exception ex)
             {
                 Debug.LogException(ex);
+                LogClient.Instance.Send(string.Format("Fatal error: {0} {1}", ex.Message, ex.StackTrace));
                 _listener.Stop();
             }
             finally
@@ -213,9 +219,9 @@ namespace SocketServer
 
                 return fields.OrderBy(x => x.Name).ToList();
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Debug.LogException(e);
+                LogClient.Instance.Send(string.Format("Fatal error (GetEvents): {0} {1}", ex.Message, ex.StackTrace));
                 return null;
             }
         }
@@ -263,22 +269,30 @@ namespace SocketServer
 
         private IEnumerable<MemberInfoWrapper> GetChildren(MemberInfoWrapper info)
         {
-            if (!_types.ContainsKey(info.TypeName) && !GetKspType(info.Parent))
-                return null;
+            try
+            {
+                if (!_types.ContainsKey(info.TypeName) && !GetKspType(info.Parent))
+                    return null;
 
-            var children = new List<MemberInfoWrapper>();
+                var children = new List<MemberInfoWrapper>();
 
-            var type = _types[info.TypeName];
+                var type = _types[info.TypeName];
 
-            var fields = type.GetFields().Select(x => x.ConvertToWrapper(!IsSimpleType(x.FieldType))).ToList();
+                var fields = type.GetFields().Select(x => x.ConvertToWrapper(!IsSimpleType(x.FieldType))).ToList();
 
-            var props = type.GetProperties().Select(x => x.ConvertToWrapper(IsSimpleType(x.PropertyType))).ToList();
+                var props = type.GetProperties().Select(x => x.ConvertToWrapper(IsSimpleType(x.PropertyType))).ToList();
 
-            children.AddRange(fields);
+                children.AddRange(fields);
 
-            children.AddRange(props);
+                children.AddRange(props);
 
-            return children.OrderBy(x => x.Name).ToList();
+                return children.OrderBy(x => x.Name).ToList();
+            }
+            catch (Exception ex)
+            {
+               LogClient.Instance.Send(string.Format("Fatal error (GetChildren): {0} {1}", ex.Message, ex.StackTrace)); 
+               return null;
+            }
         }
 
         private object GetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
@@ -287,7 +301,7 @@ namespace SocketServer
 
             var currentWrapper = wrappers.FirstOrDefault();
 
-            Debug.Log("First item " + currentWrapper.Name);
+            LogClient.Instance.Send(string.Format("GetKspValue: First item {0}", currentWrapper.Name));
 
             wrappers = wrappers.Skip(1).ToList();
 
@@ -299,7 +313,7 @@ namespace SocketServer
 
                     var type = _types[currentWrapper.TypeName];
 
-                    Debug.Log("Get type " + type.Name);
+                    LogClient.Instance.Send(string.Format("GetKspValue: Get type {0}", type.Name));
 
                     if (_instantiateTypes.ContainsKey(type.Name))
                     {
@@ -330,7 +344,7 @@ namespace SocketServer
 
                     if (parentType.GetInterfaces().Contains(typeof(IEnumerable)))
                     {
-                        Debug.Log("Object is indexed ");
+                        LogClient.Instance.Send("GetKspValue: Object is indexed");
 
                         var indexedProp = parentType.GetProperties().Where(x => x.GetIndexParameters().Any()).FirstOrDefault(x =>
                             x.GetIndexParameters().All(m => m.ParameterType.IsPrimitive));
@@ -348,11 +362,11 @@ namespace SocketServer
 
                 if (field != null)
                 {
-                    Debug.Log("Get field " + field.Name);
+                    LogClient.Instance.Send(string.Format("GetKspValue: Get field {0}", field.Name));
 
                     var value = field.IsStatic ? field.GetValue(null) : instance != null ? field.GetValue(instance) : null;
 
-                    Debug.Log("Get field value " + value);
+                    LogClient.Instance.Send(string.Format("GetKspValue: Get field value {0}", value));
 
                     return wrappers.Any() ? GetKspValue(wrappers, value, field.FieldType) : value;
                 }
@@ -361,11 +375,11 @@ namespace SocketServer
 
                 if (prop != null)
                 {
-                    Debug.Log("Get prop " + prop.Name);
+                    LogClient.Instance.Send(string.Format("GetKspValue: Get prop {0}", prop.Name));
 
                     var value = prop.GetGetMethod().IsStatic ? prop.GetValue(null, null) : instance != null ? prop.GetValue(instance, null) : null;
 
-                    Debug.Log("Get prop value " + value);
+                    LogClient.Instance.Send(string.Format("GetKspValue: Get prop value {0}", value));
 
                     return wrappers.Any() ? GetKspValue(wrappers, value, prop.PropertyType) : value;
                 }
@@ -387,6 +401,8 @@ namespace SocketServer
 
             Debug.Log("First item " + first.Name);
 
+            LogClient.Instance.Send(string.Format("SetKspValue: First item {0}", first.Name));
+
             wrappers = wrappers.Skip(1).ToList();
 
             try
@@ -397,7 +413,7 @@ namespace SocketServer
 
                     var type = _types[first.TypeName];
 
-                    Debug.Log("Get type " + type.Name);
+                    LogClient.Instance.Send(string.Format("SetKspValue: Get type {0}", type.Name));
 
                     if (_instantiateTypes.ContainsKey(type.Name))
                     {
@@ -428,7 +444,7 @@ namespace SocketServer
 
                     if (parentType.GetInterfaces().Contains(typeof(IEnumerable)))
                     {
-                        Debug.Log("Object is indexed ");
+                        LogClient.Instance.Send("Object is indexed");
 
                         var indexedProp = parentType.GetProperties().Where(x => x.GetIndexParameters().Any()).FirstOrDefault(x =>
                             x.GetIndexParameters().All(m => m.ParameterType.IsPrimitive));
@@ -448,11 +464,11 @@ namespace SocketServer
 
                 if (field != null)
                 {
-                    Debug.Log("Get field " + field.Name);
+                    LogClient.Instance.Send(string.Format("SetKspValue: Get field {0}", field.Name));
 
                     var value = field.IsStatic ? field.GetValue(null) : instance != null ? field.GetValue(instance) : null;
 
-                    Debug.Log("Get field value " + value);
+                    LogClient.Instance.Send(string.Format("SetKspValue: Get field value {0}", value));
 
                     if (wrappers.Any())
                     {
@@ -473,11 +489,11 @@ namespace SocketServer
 
                 if (prop != null)
                 {
-                    Debug.Log("Get prop " + prop.Name);
+                    LogClient.Instance.Send(string.Format("SetKspValue: Get prop {0}", prop.Name));
 
                     var value = prop.GetGetMethod().IsStatic ? prop.GetValue(null, null) : instance != null ? prop.GetValue(instance, null) : null;
 
-                    Debug.Log("Get prop value " + value);
+                    LogClient.Instance.Send(string.Format("SetKspValue: Get prop value {0}", value));
 
                     if (wrappers.Any())
                     {
@@ -496,7 +512,7 @@ namespace SocketServer
             }
             catch (Exception ex)
             {
-                Debug.LogException(ex);
+                LogClient.Instance.Send(string.Format("Fatal error: {0} {1}", ex.Message, ex.StackTrace));
             }
         }
 
@@ -512,8 +528,7 @@ namespace SocketServer
 
                 foreach (var externalAssembly in externalAssemblies)
                 {
-
-                    Debug.Log("External type " + externalAssembly);
+                    LogClient.Instance.Send(string.Format("GetAllTypes: External type {0}", externalAssembly));
 
                     List<Type> externalTypes =
                      assemblies.Where(x => x.FullName.Contains(externalAssembly))
@@ -609,9 +624,9 @@ namespace SocketServer
 
                 return null;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                Debug.LogException(e);
+                LogClient.Instance.Send(string.Format("(ConvertValue) Fatal error: {0} {1}", ex.Message, ex.StackTrace));
                 return null;
             }
         }
@@ -679,7 +694,7 @@ namespace SocketServer
         private void ServerAttached(Part data)
         {
             _externalPart = data;
-            Debug.Log("Server recieved");
+            LogClient.Instance.Send(string.Format("Object attached to server: {0} {1}", data.name, data.GetInstanceID()));
         }
 
         #endregion

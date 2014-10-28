@@ -112,6 +112,7 @@
     </Compile>
     <Compile Include="DebugModel.cs" />
     <Compile Include="DebugViewModel.cs" />
+    <Compile Include="LogServer\LogServer.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>

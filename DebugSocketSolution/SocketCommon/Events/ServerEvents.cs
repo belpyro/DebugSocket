@@ -7,6 +7,6 @@ namespace SocketCommon.Events
 {
     public static class ServerEvents
     {
-        public static EventData<Part> OnAttachToServer = new EventData<Part>("OnAttachToServer");
+        public static readonly EventData<Part> OnAttachToServer = new EventData<Part>("OnAttachToServer");
     }
 }

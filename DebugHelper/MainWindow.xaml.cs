@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using SocketCommon;
 using SocketCommon.Wrappers.Tree;
 
 namespace DebugHelper
@@ -25,19 +26,29 @@ namespace DebugHelper
 
         private readonly BackgroundWorker _loadingWorker = new BackgroundWorker();
 
+        private LogServer.LogServer _server = new LogServer.LogServer();
+
         public MainWindow()
         {
             InitializeComponent();
             Loaded += MainWindow_Loaded;
+            Closed += MainWindow_Closed;
             AddHandler(TreeViewItem.ExpandedEvent, new RoutedEventHandler(ItemExpanded), true);
             _loadingWorker.DoWork += _loadingWorker_DoWork;
             _loadingWorker.RunWorkerCompleted += _loadingWorker_RunWorkerCompleted;
         }
 
+        void MainWindow_Closed(object sender, EventArgs e)
+        {
+            _loadingWorker.DoWork -= _loadingWorker_DoWork;
+            _loadingWorker.RunWorkerCompleted -= _loadingWorker_RunWorkerCompleted;
+            _server.OnRecieved -= _server_OnRecieved;
+        }
+
         void _loadingWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             TypesLoaded();
-            Indicator.IsBusy = false; 
+            Indicator.IsBusy = false;
         }
 
         void _loadingWorker_DoWork(object sender, DoWorkEventArgs e)
@@ -140,6 +151,17 @@ namespace DebugHelper
         {
             _model = new DebugViewModel();
             DataContext = _model;
+            _server.OnRecieved += _server_OnRecieved;
+            _server.Start();
+        }
+
+        void _server_OnRecieved(object sender, LogServer.RequestEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                LogBlock.Text += Environment.NewLine + e.Request.Data;
+                MyScrollViewer.ScrollToBottom();
+            });
         }
 
         void TypesLoaded()
@@ -171,7 +193,7 @@ namespace DebugHelper
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
             if (_loadingWorker.IsBusy) return;
-            
+
             Indicator.IsBusy = true;
             _loadingWorker.RunWorkerAsync();
         }
@@ -192,7 +214,7 @@ namespace DebugHelper
         }
 
         private void MethodsButton_OnClick(object sender, RoutedEventArgs e)
-        {           
+        {
             var item = TypeTree.SelectedItem as TreeViewItem;
 
             if (item == null) return;
@@ -211,8 +233,30 @@ namespace DebugHelper
 
         private void AttachEvent_Click(object sender, RoutedEventArgs e)
         {
-            var item = (sender as Button).DataContext;
-            _model.AttachToEvent((MemberInfoWrapper) item);
+            var btn = sender as Button;
+
+            if (btn == null) return;
+
+            if (btn.Tag == null)
+            {
+                return;
+            }
+
+            var tag = (Commands)btn.Tag;
+            var item = btn.DataContext;
+            switch (tag)
+            {
+                case Commands.EventAttach:
+                    _model.AttachToEvent((MemberInfoWrapper)item);
+                    btn.Content = "Dettach";
+                    btn.Tag = Commands.EventDetach;
+                    break;
+                case Commands.EventDetach:
+                    _model.DettachToEvent((MemberInfoWrapper)item);
+                    btn.Content = "Attach";
+                    btn.Tag = Commands.EventAttach;
+                    break;
+            }
         }
     }
 }

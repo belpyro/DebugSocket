@@ -82,9 +82,7 @@ Global
 		{F50899CA-2966-4BCF-8B8E-97FE4418EF79}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F50899CA-2966-4BCF-8B8E-97FE4418EF79}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F50899CA-2966-4BCF-8B8E-97FE4418EF79}.Server|Any CPU.ActiveCfg = Release|Any CPU
-		{F50899CA-2966-4BCF-8B8E-97FE4418EF79}.Server|Any CPU.Build.0 = Release|Any CPU
 		{F50899CA-2966-4BCF-8B8E-97FE4418EF79}.Test|Any CPU.ActiveCfg = Release|Any CPU
-		{F50899CA-2966-4BCF-8B8E-97FE4418EF79}.Test|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

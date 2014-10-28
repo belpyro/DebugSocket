@@ -21,7 +21,7 @@ namespace DebugHelper
 
             LoadedTypes = (List<MemberInfoWrapper>)result.Data;
 
-            if (OnLoaded != null) OnLoaded(this, EventArgs.Empty);
+            //if (OnLoaded != null) OnLoaded(this, EventArgs.Empty);
         }
 
         public object GetKspValue(MemberInfoWrapper wrapper)
@@ -69,12 +69,18 @@ namespace DebugHelper
         {
             DebugModel.Instance.GetValue(wrapper, Commands.SetValue);
         }
+
         public void AttachToEvent(MemberInfoWrapper wrapper)
         {
             DebugModel.Instance.GetValue(wrapper, Commands.EventAttach);
         }
 
-        public IEnumerable<MemberInfoWrapper> LoadedTypes { get; set; }
+        public void DettachToEvent(MemberInfoWrapper wrapper)
+        {
+            DebugModel.Instance.GetValue(wrapper, Commands.EventDetach);
+        }
+
+        public IEnumerable<MemberInfoWrapper> LoadedTypes { get; private set; }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -87,8 +93,6 @@ namespace DebugHelper
                 handler(this, new PropertyChangedEventArgs(propertyName));
             }
         }
-
-        public event EventHandler OnLoaded;
 
         public string SelectedValue { get; set; }
     }

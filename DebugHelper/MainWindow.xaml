@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         xmlns:tree="clr-namespace:SocketCommon.Wrappers.Tree;assembly=SocketCommon"
+        xmlns:socketCommon="clr-namespace:SocketCommon;assembly=SocketCommon"
         Title="MainWindow" Height="480" Width="640">
     <Window.Resources>
         <Style TargetType="{x:Type ListBoxItem}">
@@ -45,13 +46,14 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <TextBox x:Name="CompleteBox" TextChanged="CompleteBox_OnTextChanged"/>
 
             <TreeView Grid.Row="1" Grid.Column="0" Name="TypeTree"/>
 
-            <StatusBar Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2">
+            <StatusBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2">
                 <Rectangle Fill="Firebrick" Margin="4" Width="24" Height="16"></Rectangle>
                 <TextBlock Text="Type" VerticalAlignment="Center"></TextBlock>
                 <Rectangle Fill="CornflowerBlue" Margin="4" Width="24" Height="16"></Rectangle>
@@ -72,7 +74,11 @@
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding Name}" Margin="4" FontStretch="Normal" FontStyle="Normal" FontWeight="Regular" Foreground="Black"/>
-                                    <Button Content="Attach" Margin="4" Click="AttachEvent_Click"></Button>
+                                    <Button Content="Attach" Margin="4" Click="AttachEvent_Click">
+                                       <Button.Tag>
+                                            <x:Static Member="socketCommon:Commands.EventAttach"/> 
+                                       </Button.Tag> 
+                                    </Button>
                                 </StackPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -95,6 +101,11 @@
                     <Image Source="Images/light-32.png"/>
                 </Button>
             </ToolBar>
+
+            <ScrollViewer Grid.Row="2" Grid.ColumnSpan="2" Grid.Column="0" VerticalScrollBarVisibility="Visible" CanContentScroll="True" Height="60" Name="MyScrollViewer">
+                <TextBlock  TextWrapping="Wrap" Name="LogBlock"/>
+            </ScrollViewer>
+            
         </Grid>
     </xctk:BusyIndicator>
 </Window>
