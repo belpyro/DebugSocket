@@ -43,6 +43,7 @@ namespace DebugHelper
             _loadingWorker.DoWork -= _loadingWorker_DoWork;
             _loadingWorker.RunWorkerCompleted -= _loadingWorker_RunWorkerCompleted;
             _server.OnRecieved -= _server_OnRecieved;
+            _server.Stop();
         }
 
         void _loadingWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)

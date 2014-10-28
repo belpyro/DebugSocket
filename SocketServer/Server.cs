@@ -278,7 +278,7 @@ namespace SocketServer
 
                 var type = _types[info.TypeName];
 
-                var fields = type.GetFields().Select(x => x.ConvertToWrapper(!IsSimpleType(x.FieldType))).ToList();
+                var fields = type.GetFields().Select(x => x.ConvertToWrapper(IsSimpleType(x.FieldType))).ToList();
 
                 var props = type.GetProperties().Select(x => x.ConvertToWrapper(IsSimpleType(x.PropertyType))).ToList();
 
@@ -287,6 +287,11 @@ namespace SocketServer
                 children.AddRange(props);
 
                 return children.OrderBy(x => x.Name).ToList();
+            }
+            catch (KeyNotFoundException ex)
+            {
+                LogClient.Instance.Send(string.Format("Fatal error key not found (GetChildren) - key {2}: {0} {1}", ex.Message, ex.StackTrace, info.TypeName));
+                return null;
             }
             catch (Exception ex)
             {
@@ -348,6 +353,8 @@ namespace SocketServer
 
                         var indexedProp = parentType.GetProperties().Where(x => x.GetIndexParameters().Any()).FirstOrDefault(x =>
                             x.GetIndexParameters().All(m => m.ParameterType.IsPrimitive));
+                        
+                        LogClient.Instance.Send(string.Format("GetKspValue: Indexed property is {0}", indexedProp != null ? indexedProp.Name : "null"));
 
                         if (indexedProp != null)
                         {
@@ -362,7 +369,7 @@ namespace SocketServer
 
                 if (field != null)
                 {
-                    LogClient.Instance.Send(string.Format("GetKspValue: Get field {0}", field.Name));
+                    LogClient.Instance.Send(string.Format("GetKspValue: Get field {0} from instance {1}", field.Name, instance ?? "null"));
 
                     var value = field.IsStatic ? field.GetValue(null) : instance != null ? field.GetValue(instance) : null;
 
@@ -633,22 +640,30 @@ namespace SocketServer
 
         private bool GetKspType(MemberInfoWrapper parent)
         {
-            if (parent == null)
+            try
             {
+                if (parent == null)
+                {
+                    return false;
+                }
+
+                if (_types.ContainsKey(parent.TypeName)) return true;
+
+                var t = AppDomain.CurrentDomain.GetAssemblies()
+                    .SelectMany(x => x.GetTypes())
+                    .FirstOrDefault(y => y.Name.Equals(parent.TypeName));
+
+                if (t == null) return false;
+
+                _types.Add(t.Name, t);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogClient.Instance.Send(string.Format("(GetKspType) Fatal error: {0} {1}", ex.Message, ex.StackTrace));
                 return false;
             }
-
-            if (_types.ContainsKey(parent.TypeName)) return true;
-
-            var t = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(x => x.GetTypes())
-                .FirstOrDefault(y => y.Name.Equals(parent.TypeName));
-
-            if (t == null) return false;
-
-            _types.Add(t.Name, t);
-
-            return true;
         }
 
         private IEnumerable<string> GetExternalAssemblies()

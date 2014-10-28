@@ -630,403 +630,403 @@ namespace SocketServer {
         }
         
         void onJointBreak(EventReport data) {
-            Debug.Log("Event onJointBreak was invoked!!!");
+            LogClient.Instance.Send("Event onJointBreak was invoked!!!");
         }
         
         void onCrash(EventReport data) {
-            Debug.Log("Event onCrash was invoked!!!");
+            LogClient.Instance.Send("Event onCrash was invoked!!!");
         }
         
         void onCrashSplashdown(EventReport data) {
-            Debug.Log("Event onCrashSplashdown was invoked!!!");
+            LogClient.Instance.Send("Event onCrashSplashdown was invoked!!!");
         }
         
         void onCollision(EventReport data) {
-            Debug.Log("Event onCollision was invoked!!!");
+            LogClient.Instance.Send("Event onCollision was invoked!!!");
         }
         
         void onOverheat(EventReport data) {
-            Debug.Log("Event onOverheat was invoked!!!");
+            LogClient.Instance.Send("Event onOverheat was invoked!!!");
         }
         
         void onStageSeparation(EventReport data) {
-            Debug.Log("Event onStageSeparation was invoked!!!");
+            LogClient.Instance.Send("Event onStageSeparation was invoked!!!");
         }
         
         void onCrewOnEva(GameEvents.FromToAction<Part, Part> data) {
-            Debug.Log("Event onCrewOnEva was invoked!!!");
+            LogClient.Instance.Send("Event onCrewOnEva was invoked!!!");
         }
         
         void onCrewKilled(EventReport data) {
-            Debug.Log("Event onCrewKilled was invoked!!!");
+            LogClient.Instance.Send("Event onCrewKilled was invoked!!!");
         }
         
         void onKerbalAdded(ProtoCrewMember data) {
-            Debug.Log("Event onKerbalAdded was invoked!!!");
+            LogClient.Instance.Send("Event onKerbalAdded was invoked!!!");
         }
         
         void onKerbalRemoved(ProtoCrewMember data) {
-            Debug.Log("Event onKerbalRemoved was invoked!!!");
+            LogClient.Instance.Send("Event onKerbalRemoved was invoked!!!");
         }
         
         void onKerbalTypeChange(ProtoCrewMember data1, ProtoCrewMember.KerbalType data2, ProtoCrewMember.KerbalType data3) {
-            Debug.Log("Event onKerbalTypeChange was invoked!!!");
+            LogClient.Instance.Send("Event onKerbalTypeChange was invoked!!!");
         }
         
         void onKerbalStatusChange(ProtoCrewMember data1, ProtoCrewMember.RosterStatus data2, ProtoCrewMember.RosterStatus data3) {
-            Debug.Log("Event onKerbalStatusChange was invoked!!!");
+            LogClient.Instance.Send("Event onKerbalStatusChange was invoked!!!");
         }
         
         void onCrewBoardVessel(GameEvents.FromToAction<Part, Part> data) {
-            Debug.Log("Event onCrewBoardVessel was invoked!!!");
+            LogClient.Instance.Send("Event onCrewBoardVessel was invoked!!!");
         }
         
         void onLaunch(EventReport data) {
-            Debug.Log("Event onLaunch was invoked!!!");
+            LogClient.Instance.Send("Event onLaunch was invoked!!!");
         }
         
         void onUndock(EventReport data) {
-            Debug.Log("Event onUndock was invoked!!!");
+            LogClient.Instance.Send("Event onUndock was invoked!!!");
         }
         
         void onSplashDamage(EventReport data) {
-            Debug.Log("Event onSplashDamage was invoked!!!");
+            LogClient.Instance.Send("Event onSplashDamage was invoked!!!");
         }
         
         void onNewVesselCreated(Vessel data) {
-            Debug.Log("Event onNewVesselCreated was invoked!!!");
+            LogClient.Instance.Send("Event onNewVesselCreated was invoked!!!");
         }
         
         void onVesselWillDestroy(Vessel data) {
-            Debug.Log("Event onVesselWillDestroy was invoked!!!");
+            LogClient.Instance.Send("Event onVesselWillDestroy was invoked!!!");
         }
         
         void onVesselCreate(Vessel data) {
-            Debug.Log("Event onVesselCreate was invoked!!!");
+            LogClient.Instance.Send("Event onVesselCreate was invoked!!!");
         }
         
         void onVesselDestroy(Vessel data) {
-            Debug.Log("Event onVesselDestroy was invoked!!!");
+            LogClient.Instance.Send("Event onVesselDestroy was invoked!!!");
         }
         
         void onVesselChange(Vessel data) {
-            Debug.Log("Event onVesselChange was invoked!!!");
+            LogClient.Instance.Send("Event onVesselChange was invoked!!!");
         }
         
         void onVesselSituationChange(GameEvents.HostedFromToAction<Vessel, Vessel.Situations> data) {
-            Debug.Log("Event onVesselSituationChange was invoked!!!");
+            LogClient.Instance.Send("Event onVesselSituationChange was invoked!!!");
         }
         
         void onKnowledgeChanged(GameEvents.HostedFromToAction<IDiscoverable, DiscoveryLevels> data) {
-            Debug.Log("Event onKnowledgeChanged was invoked!!!");
+            LogClient.Instance.Send("Event onKnowledgeChanged was invoked!!!");
         }
         
         void onVesselRename(GameEvents.HostedFromToAction<Vessel, string> data) {
-            Debug.Log("Event onVesselRename was invoked!!!");
+            LogClient.Instance.Send("Event onVesselRename was invoked!!!");
         }
         
         void onVesselGoOnRails(Vessel data) {
-            Debug.Log("Event onVesselGoOnRails was invoked!!!");
+            LogClient.Instance.Send("Event onVesselGoOnRails was invoked!!!");
         }
         
         void onVesselGoOffRails(Vessel data) {
-            Debug.Log("Event onVesselGoOffRails was invoked!!!");
+            LogClient.Instance.Send("Event onVesselGoOffRails was invoked!!!");
         }
         
         void onVesselLoaded(Vessel data) {
-            Debug.Log("Event onVesselLoaded was invoked!!!");
+            LogClient.Instance.Send("Event onVesselLoaded was invoked!!!");
         }
         
         void onVesselWasModified(Vessel data) {
-            Debug.Log("Event onVesselWasModified was invoked!!!");
+            LogClient.Instance.Send("Event onVesselWasModified was invoked!!!");
         }
         
         void onVesselSOIChanged(GameEvents.HostedFromToAction<Vessel, CelestialBody> data) {
-            Debug.Log("Event onVesselSOIChanged was invoked!!!");
+            LogClient.Instance.Send("Event onVesselSOIChanged was invoked!!!");
         }
         
         void onVesselOrbitClosed(Vessel data) {
-            Debug.Log("Event onVesselOrbitClosed was invoked!!!");
+            LogClient.Instance.Send("Event onVesselOrbitClosed was invoked!!!");
         }
         
         void onVesselOrbitEscaped(Vessel data) {
-            Debug.Log("Event onVesselOrbitEscaped was invoked!!!");
+            LogClient.Instance.Send("Event onVesselOrbitEscaped was invoked!!!");
         }
         
         void OnVesselRecoveryRequested(Vessel data) {
-            Debug.Log("Event OnVesselRecoveryRequested was invoked!!!");
+            LogClient.Instance.Send("Event OnVesselRecoveryRequested was invoked!!!");
         }
         
         void onVesselRecovered(ProtoVessel data) {
-            Debug.Log("Event onVesselRecovered was invoked!!!");
+            LogClient.Instance.Send("Event onVesselRecovered was invoked!!!");
         }
         
         void onVesselTerminated(ProtoVessel data) {
-            Debug.Log("Event onVesselTerminated was invoked!!!");
+            LogClient.Instance.Send("Event onVesselTerminated was invoked!!!");
         }
         
         void onSameVesselDock(GameEvents.FromToAction<ModuleDockingNode, ModuleDockingNode> data) {
-            Debug.Log("Event onSameVesselDock was invoked!!!");
+            LogClient.Instance.Send("Event onSameVesselDock was invoked!!!");
         }
         
         void onSameVesselUndock(GameEvents.FromToAction<ModuleDockingNode, ModuleDockingNode> data) {
-            Debug.Log("Event onSameVesselUndock was invoked!!!");
+            LogClient.Instance.Send("Event onSameVesselUndock was invoked!!!");
         }
         
         void onStageActivate(int data) {
-            Debug.Log("Event onStageActivate was invoked!!!");
+            LogClient.Instance.Send("Event onStageActivate was invoked!!!");
         }
         
         void onDominantBodyChange(GameEvents.FromToAction<CelestialBody, CelestialBody> data) {
-            Debug.Log("Event onDominantBodyChange was invoked!!!");
+            LogClient.Instance.Send("Event onDominantBodyChange was invoked!!!");
         }
         
         void onKrakensbaneEngage(Vector3d data) {
-            Debug.Log("Event onKrakensbaneEngage was invoked!!!");
+            LogClient.Instance.Send("Event onKrakensbaneEngage was invoked!!!");
         }
         
         void onKrakensbaneDisengage(Vector3d data) {
-            Debug.Log("Event onKrakensbaneDisengage was invoked!!!");
+            LogClient.Instance.Send("Event onKrakensbaneDisengage was invoked!!!");
         }
         
         void onFloatingOriginShift(Vector3d data) {
-            Debug.Log("Event onFloatingOriginShift was invoked!!!");
+            LogClient.Instance.Send("Event onFloatingOriginShift was invoked!!!");
         }
         
         void onRotatingFrameTransition(GameEvents.HostTargetAction<CelestialBody, bool> data) {
-            Debug.Log("Event onRotatingFrameTransition was invoked!!!");
+            LogClient.Instance.Send("Event onRotatingFrameTransition was invoked!!!");
         }
         
         void onGamePause() {
-            Debug.Log("Event onGamePause was invoked!!!");
+            LogClient.Instance.Send("Event onGamePause was invoked!!!");
         }
         
         void onGameUnpause() {
-            Debug.Log("Event onGameUnpause was invoked!!!");
+            LogClient.Instance.Send("Event onGameUnpause was invoked!!!");
         }
         
         void onFlightReady() {
-            Debug.Log("Event onFlightReady was invoked!!!");
+            LogClient.Instance.Send("Event onFlightReady was invoked!!!");
         }
         
         void onTimeWarpRateChanged() {
-            Debug.Log("Event onTimeWarpRateChanged was invoked!!!");
+            LogClient.Instance.Send("Event onTimeWarpRateChanged was invoked!!!");
         }
         
         void onGameSceneLoadRequested(GameScenes data) {
-            Debug.Log("Event onGameSceneLoadRequested was invoked!!!");
+            LogClient.Instance.Send("Event onGameSceneLoadRequested was invoked!!!");
         }
         
         void onLevelWasLoaded(GameScenes data) {
-            Debug.Log("Event onLevelWasLoaded was invoked!!!");
+            LogClient.Instance.Send("Event onLevelWasLoaded was invoked!!!");
         }
         
         void onPlanetariumTargetChanged(MapObject data) {
-            Debug.Log("Event onPlanetariumTargetChanged was invoked!!!");
+            LogClient.Instance.Send("Event onPlanetariumTargetChanged was invoked!!!");
         }
         
         void onGameStateSaved(Game data) {
-            Debug.Log("Event onGameStateSaved was invoked!!!");
+            LogClient.Instance.Send("Event onGameStateSaved was invoked!!!");
         }
         
         void onGameStateCreated(Game data) {
-            Debug.Log("Event onGameStateCreated was invoked!!!");
+            LogClient.Instance.Send("Event onGameStateCreated was invoked!!!");
         }
         
         void onGameStateSave(ConfigNode data) {
-            Debug.Log("Event onGameStateSave was invoked!!!");
+            LogClient.Instance.Send("Event onGameStateSave was invoked!!!");
         }
         
         void onGameStateLoad(ConfigNode data) {
-            Debug.Log("Event onGameStateLoad was invoked!!!");
+            LogClient.Instance.Send("Event onGameStateLoad was invoked!!!");
         }
         
         void onInputLocksModified(GameEvents.FromToAction<ControlTypes, ControlTypes> data) {
-            Debug.Log("Event onInputLocksModified was invoked!!!");
+            LogClient.Instance.Send("Event onInputLocksModified was invoked!!!");
         }
         
         void OnGameSettingsApplied() {
-            Debug.Log("Event OnGameSettingsApplied was invoked!!!");
+            LogClient.Instance.Send("Event OnGameSettingsApplied was invoked!!!");
         }
         
         void onPartPack(Part data) {
-            Debug.Log("Event onPartPack was invoked!!!");
+            LogClient.Instance.Send("Event onPartPack was invoked!!!");
         }
         
         void onPartUnpack(Part data) {
-            Debug.Log("Event onPartUnpack was invoked!!!");
+            LogClient.Instance.Send("Event onPartUnpack was invoked!!!");
         }
         
         void onPartExplode(GameEvents.ExplosionReaction data) {
-            Debug.Log("Event onPartExplode was invoked!!!");
+            LogClient.Instance.Send("Event onPartExplode was invoked!!!");
         }
         
         void onPartDie(Part data) {
-            Debug.Log("Event onPartDie was invoked!!!");
+            LogClient.Instance.Send("Event onPartDie was invoked!!!");
         }
         
         void onPartDestroyed(Part data) {
-            Debug.Log("Event onPartDestroyed was invoked!!!");
+            LogClient.Instance.Send("Event onPartDestroyed was invoked!!!");
         }
         
         void onPartJointBreak(PartJoint data) {
-            Debug.Log("Event onPartJointBreak was invoked!!!");
+            LogClient.Instance.Send("Event onPartJointBreak was invoked!!!");
         }
         
         void onPartUndock(Part data) {
-            Debug.Log("Event onPartUndock was invoked!!!");
+            LogClient.Instance.Send("Event onPartUndock was invoked!!!");
         }
         
         void onPartCouple(GameEvents.FromToAction<Part, Part> data) {
-            Debug.Log("Event onPartCouple was invoked!!!");
+            LogClient.Instance.Send("Event onPartCouple was invoked!!!");
         }
         
         void onPartAttach(GameEvents.HostTargetAction<Part, Part> data) {
-            Debug.Log("Event onPartAttach was invoked!!!");
+            LogClient.Instance.Send("Event onPartAttach was invoked!!!");
         }
         
         void onPartRemove(GameEvents.HostTargetAction<Part, Part> data) {
-            Debug.Log("Event onPartRemove was invoked!!!");
+            LogClient.Instance.Send("Event onPartRemove was invoked!!!");
         }
         
         void onPartActionUICreate(Part data) {
-            Debug.Log("Event onPartActionUICreate was invoked!!!");
+            LogClient.Instance.Send("Event onPartActionUICreate was invoked!!!");
         }
         
         void onPartActionUIDismiss(Part data) {
-            Debug.Log("Event onPartActionUIDismiss was invoked!!!");
+            LogClient.Instance.Send("Event onPartActionUIDismiss was invoked!!!");
         }
         
         void onFlagSelect(string data) {
-            Debug.Log("Event onFlagSelect was invoked!!!");
+            LogClient.Instance.Send("Event onFlagSelect was invoked!!!");
         }
         
         void onMissionFlagSelect(string data) {
-            Debug.Log("Event onMissionFlagSelect was invoked!!!");
+            LogClient.Instance.Send("Event onMissionFlagSelect was invoked!!!");
         }
         
         void onFlagPlant(Vessel data) {
-            Debug.Log("Event onFlagPlant was invoked!!!");
+            LogClient.Instance.Send("Event onFlagPlant was invoked!!!");
         }
         
         void onActiveJointNeedUpdate(Vessel data) {
-            Debug.Log("Event onActiveJointNeedUpdate was invoked!!!");
+            LogClient.Instance.Send("Event onActiveJointNeedUpdate was invoked!!!");
         }
         
         void onGUILaunchScreenSpawn(GameEvents.VesselSpawnInfo data) {
-            Debug.Log("Event onGUILaunchScreenSpawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUILaunchScreenSpawn was invoked!!!");
         }
         
         void onGUILaunchScreenDespawn() {
-            Debug.Log("Event onGUILaunchScreenDespawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUILaunchScreenDespawn was invoked!!!");
         }
         
         void onGUILaunchScreenVesselSelected(ShipTemplate data) {
-            Debug.Log("Event onGUILaunchScreenVesselSelected was invoked!!!");
+            LogClient.Instance.Send("Event onGUILaunchScreenVesselSelected was invoked!!!");
         }
         
         void onGUIAstronautComplexSpawn() {
-            Debug.Log("Event onGUIAstronautComplexSpawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUIAstronautComplexSpawn was invoked!!!");
         }
         
         void onGUIAstronautComplexDespawn() {
-            Debug.Log("Event onGUIAstronautComplexDespawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUIAstronautComplexDespawn was invoked!!!");
         }
         
         void onGUIRnDComplexSpawn() {
-            Debug.Log("Event onGUIRnDComplexSpawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUIRnDComplexSpawn was invoked!!!");
         }
         
         void onGUIRnDComplexDespawn() {
-            Debug.Log("Event onGUIRnDComplexDespawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUIRnDComplexDespawn was invoked!!!");
         }
         
         void onGUIMissionControlSpawn() {
-            Debug.Log("Event onGUIMissionControlSpawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUIMissionControlSpawn was invoked!!!");
         }
         
         void onGUIMissionControlDespawn() {
-            Debug.Log("Event onGUIMissionControlDespawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUIMissionControlDespawn was invoked!!!");
         }
         
         void onGUIRecoveryDialogSpawn(MissionRecoveryDialog data) {
-            Debug.Log("Event onGUIRecoveryDialogSpawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUIRecoveryDialogSpawn was invoked!!!");
         }
         
         void onGUIRecoveryDialogDespawn(MissionRecoveryDialog data) {
-            Debug.Log("Event onGUIRecoveryDialogDespawn was invoked!!!");
+            LogClient.Instance.Send("Event onGUIRecoveryDialogDespawn was invoked!!!");
         }
         
         void onHideUI() {
-            Debug.Log("Event onHideUI was invoked!!!");
+            LogClient.Instance.Send("Event onHideUI was invoked!!!");
         }
         
         void onShowUI() {
-            Debug.Log("Event onShowUI was invoked!!!");
+            LogClient.Instance.Send("Event onShowUI was invoked!!!");
         }
         
         void onGUIPrefabLauncherReady() {
-            Debug.Log("Event onGUIPrefabLauncherReady was invoked!!!");
+            LogClient.Instance.Send("Event onGUIPrefabLauncherReady was invoked!!!");
         }
         
         void onGUIApplicationLauncherReady() {
-            Debug.Log("Event onGUIApplicationLauncherReady was invoked!!!");
+            LogClient.Instance.Send("Event onGUIApplicationLauncherReady was invoked!!!");
         }
         
         void onGUIApplicationLauncherDestroyed() {
-            Debug.Log("Event onGUIApplicationLauncherDestroyed was invoked!!!");
+            LogClient.Instance.Send("Event onGUIApplicationLauncherDestroyed was invoked!!!");
         }
         
         void onGUIMessageSystemReady() {
-            Debug.Log("Event onGUIMessageSystemReady was invoked!!!");
+            LogClient.Instance.Send("Event onGUIMessageSystemReady was invoked!!!");
         }
         
         void onEditorShipModified(ShipConstruct data) {
-            Debug.Log("Event onEditorShipModified was invoked!!!");
+            LogClient.Instance.Send("Event onEditorShipModified was invoked!!!");
         }
         
         void OnTechnologyResearched(GameEvents.HostTargetAction<RDTech, RDTech.OperationResult> data) {
-            Debug.Log("Event OnTechnologyResearched was invoked!!!");
+            LogClient.Instance.Send("Event OnTechnologyResearched was invoked!!!");
         }
         
         void OnPartPurchased(AvailablePart data) {
-            Debug.Log("Event OnPartPurchased was invoked!!!");
+            LogClient.Instance.Send("Event OnPartPurchased was invoked!!!");
         }
         
         void OnVesselRollout(ShipConstruct data) {
-            Debug.Log("Event OnVesselRollout was invoked!!!");
+            LogClient.Instance.Send("Event OnVesselRollout was invoked!!!");
         }
         
         void OnProgressReached(ProgressNode data) {
-            Debug.Log("Event OnProgressReached was invoked!!!");
+            LogClient.Instance.Send("Event OnProgressReached was invoked!!!");
         }
         
         void OnProgressComplete(ProgressNode data) {
-            Debug.Log("Event OnProgressComplete was invoked!!!");
+            LogClient.Instance.Send("Event OnProgressComplete was invoked!!!");
         }
         
         void OnProgressAchieved(ProgressNode data) {
-            Debug.Log("Event OnProgressAchieved was invoked!!!");
+            LogClient.Instance.Send("Event OnProgressAchieved was invoked!!!");
         }
         
         void OnScienceRecieved(float data1, ScienceSubject data2) {
-            Debug.Log("Event OnScienceRecieved was invoked!!!");
+            LogClient.Instance.Send("Event OnScienceRecieved was invoked!!!");
         }
         
         void OnReputationChanged(float data) {
-            Debug.Log("Event OnReputationChanged was invoked!!!");
+            LogClient.Instance.Send("Event OnReputationChanged was invoked!!!");
         }
         
         void OnScienceChanged(float data) {
-            Debug.Log("Event OnScienceChanged was invoked!!!");
+            LogClient.Instance.Send("Event OnScienceChanged was invoked!!!");
         }
         
         void OnFundsChanged(double data) {
-            Debug.Log("Event OnFundsChanged was invoked!!!");
+            LogClient.Instance.Send("Event OnFundsChanged was invoked!!!");
         }
         
         void onVesselRecoveryProcessing(ProtoVessel data1, MissionRecoveryDialog data2, float data3) {
-            Debug.Log("Event onVesselRecoveryProcessing was invoked!!!");
+            LogClient.Instance.Send("Event onVesselRecoveryProcessing was invoked!!!");
         }
     }
 }

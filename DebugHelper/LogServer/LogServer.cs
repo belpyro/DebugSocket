@@ -12,11 +12,18 @@ namespace DebugHelper.LogServer
     public class LogServer
     {
         private TcpListener _logListener;
+        private volatile bool isStopped = false;
 
         public void Start()
         {
             var t = new Thread(ServerStart);
             t.Start();
+        }
+
+        public void Stop()
+        {
+            isStopped = true;
+            _logListener.Stop();
         }
 
         private void ServerStart()
@@ -30,6 +37,8 @@ namespace DebugHelper.LogServer
             {
                 while (true)
                 {
+                    if (isStopped) return;
+
                     var client = _logListener.AcceptTcpClient();
 
                     var buff = new byte[9000000];
