@@ -5,11 +5,33 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using SocketCommon.Wrappers.Tree;
+using UnityEngine;
 
 namespace SocketCommon.Helpers
 {
     public static class ReflectionExtensions
     {
+        public static bool IsSimpleKspType(this Type t)
+        {
+            return t.IsPrimitive || t == typeof(string) ||
+                   t == typeof(Guid) || t.IsEnum || t == typeof(Vector3) || t == typeof(Vector3d) || t == typeof(Quaternion) ||
+                   t == typeof(Vector2) || t == typeof(Vector2d) || t == typeof(Matrix4x4) || t == typeof(Matrix4x4D);
+
+        }
+
+        public static MemberInfoWrapper ConvertToWrapper(this MemberInfo info)
+        {
+            switch (info.MemberType)
+            {
+                case MemberTypes.Field:
+                    return (info as FieldInfo).ConvertToWrapper((info as FieldInfo).FieldType.IsSimpleKspType());
+                case MemberTypes.Property:
+                    return (info as PropertyInfo).ConvertToWrapper((info as PropertyInfo).PropertyType.IsSimpleKspType());
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
         public static MemberInfoWrapper ConvertToWrapper(this FieldInfo info, bool isSimple = true)
         {
             return new MemberInfoWrapper()

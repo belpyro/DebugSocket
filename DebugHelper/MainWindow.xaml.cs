@@ -85,7 +85,11 @@ namespace DebugHelper
         {
             item.Items.Clear();
 
-            var child = new TreeViewItem() { Header = wrapper == null ? "no value or no instantiate" : wrapper.Value, Tag = wrapper };
+            var obj = item.Tag as MemberInfoWrapper;
+
+            obj.Value = wrapper.Value;
+
+            var child = new TreeViewItem() { Header = wrapper.Value ?? "no value or no instantiate", Tag = obj };
 
             item.Items.Add(child);
         }

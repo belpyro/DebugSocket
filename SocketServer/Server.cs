@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text.RegularExpressions;
 using System.Threading;
+using Fasterflect;
 using SocketCommon;
 using SocketCommon.Comparers;
 using SocketCommon.Events;
@@ -31,20 +32,8 @@ namespace SocketServer
 
         private Part _externalPart;
 
-        //private Logger _fileLogger;
-        //private Logger _networkLogger;
-
         public void Start()
         {
-            //InitializeLogger();
-
-            //_fileLogger = LogManager.GetLogger("FileTarget");
-
-            //if (_fileLogger != null)
-            //{
-            //    _fileLogger.Log(LogLevel.Info, "test logger");
-            //}
-
             ConfigureInstantiateAssemblies();
 
             ServerEvents.OnAttachToServer.Add(ServerAttached);
@@ -52,22 +41,6 @@ namespace SocketServer
             var t = new Thread(StartServer);
             t.Start();
         }
-
-        //private void InitializeLogger()
-        //{
-        //    var configuration = new LoggingConfiguration();
-
-        //    var fTarget = new FileTarget()
-        //    {
-        //        CreateDirs = true,
-        //        DeleteOldFileOnStartup = true,
-        //        FileName = "${basedir}/logs/server.log"
-        //    };
-
-        //    configuration.AddTarget("f", fTarget);
-
-        //    //LogManager.Configuration = configuration;
-        //}
 
         private void StartServer()
         {
@@ -234,7 +207,7 @@ namespace SocketServer
 
             if (source == null) return null;
 
-            if (!source.GetType().GetInterfaces().Contains(typeof(IEnumerable))) return null;
+            if (!source.GetType().Implements<IEnumerable>()) return null;
 
             var i = 0;
 
@@ -242,7 +215,7 @@ namespace SocketServer
 
             foreach (var item in (IEnumerable)source)
             {
-                if (_types.ContainsKey(item.GetType().Name) && !IsSimpleType(item.GetType()))
+                if (_types.ContainsKey(item.GetType().Name) && !item.GetType().IsSimpleKspType())
                 {
                     result.Add(new MemberInfoWrapper()
                     {
@@ -282,13 +255,12 @@ namespace SocketServer
 
                 var type = _types[info.TypeName];
 
-                var fields = type.GetFields().Select(x => x.ConvertToWrapper(IsSimpleType(x.FieldType))).ToList();
+                var items = type.FieldsAndProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.Static);
 
-                var props = type.GetProperties().Select(x => x.ConvertToWrapper(IsSimpleType(x.PropertyType))).ToList();
-
-                children.AddRange(fields);
-
-                children.AddRange(props);
+                if (items.Any())
+                {
+                    children.AddRange(items.Select(x => x.ConvertToWrapper()));
+                }
 
                 return children.OrderBy(x => x.Name).ToList();
             }
@@ -306,7 +278,7 @@ namespace SocketServer
 
         private object GetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
         {
-            if (wrappers == null || !wrappers.Any()) return null;
+            if (wrappers == null || !wrappers.Any()) return "wrappers is empty";
 
             var currentWrapper = wrappers.FirstOrDefault();
 
@@ -316,127 +288,106 @@ namespace SocketServer
 
             try
             {
+                //get instance
                 if (parent == null)
                 {
-                    if (!_types.ContainsKey(currentWrapper.TypeName)) return null;
-
-                    var type = _types[currentWrapper.TypeName];
-
-                    LogClient.Instance.Send(string.Format("GetKspValue: Get type {0}", type.Name));
-
-                    if (_instantiateTypes.ContainsKey(type.Name))
-                    {
-                        var instanceField = type.GetField(_instantiateTypes[type.Name]);
-
-                        if (instanceField == null)
-                        {
-                            var instanceProp = type.GetProperty(_instantiateTypes[type.Name]);
-
-                            if (instanceProp == null) return null;
-
-                            return GetKspValue(wrappers, instanceProp.GetValue(null, null), type);
-                        }
-
-                        var dataInstance = instanceField.GetValue(null);
-
-                        return GetKspValue(wrappers, dataInstance, type);
-                    }
-
-                    return GetKspValue(wrappers, null, type);
+                    Type t;
+                    object obj;
+                    var result = GetTypeInstance(currentWrapper, out t, out obj);
+                    return result ? GetKspValue(wrappers, obj, t) : "cannot instantiate type";
                 }
 
                 //collection
 
-                if (instance != null)
+                var value = GetIndexedPropertyValue(instance, currentWrapper);
+
+                LogClient.Instance.Send(string.Format("GetKspValue: Indexed property is {0}", value ?? "null"));
+
+                if (value != null)
                 {
-                    var parentType = instance.GetType();
-
-                    if (parentType.GetInterfaces().Contains(typeof(IEnumerable)))
-                    {
-                        LogClient.Instance.Send(string.Format("GetKspValue: Object is indexed. Parent type is {0}", parentType));
-
-                        object value = null;
-
-                        value = GetIndexedPropertyValue(instance, currentWrapper);
-
-                        LogClient.Instance.Send(string.Format("GetKspValue: Indexed property is {0}", value ?? "null"));
-
-
-                        if (value != null)
-                        {
-                            //var value = indexedProp.GetValue(instance, new object[] { currentWrapper.Index });
-                            return wrappers.Any() ? GetKspValue(wrappers, value, value.GetType()) : value;
-                        }
-                    }
+                    return wrappers.Any() ? GetKspValue(wrappers, value, value.GetType()) : value;
                 }
 
+                //get value for a member
 
-                var field = parent.GetField(currentWrapper.Name);
+                var member = parent.Members(MemberTypes.Field | MemberTypes.Property, BindingFlags.Instance | BindingFlags.Public | BindingFlags.Static, currentWrapper.Name).FirstOrDefault();
 
-                if (field != null)
-                {
-                    LogClient.Instance.Send(string.Format("GetKspValue: Get field {0} from instance {1} (isStatic = {2})", field.Name, instance ?? "null", field.IsStatic));
+                if (member == null) return "cannot get member";
 
-                    var value = field.IsStatic ? field.GetValue(null) : instance != null ? field.GetValue(instance) : null;
+                LogClient.Instance.Send(string.Format("GetKspValue: Member {0} type {2} from instance {1}", member.Name, instance ?? "null", member.MemberType));
 
-                    LogClient.Instance.Send(string.Format("GetKspValue: Get field value {0}", value));
+                var memberValue = member.IsStatic() ? member.Get() : member.Get(instance);
 
-                    return wrappers.Any() ? GetKspValue(wrappers, value, field.FieldType) : value;
-                }
-
-                var prop = parent.GetProperty(currentWrapper.Name);
-
-                if (prop != null)
-                {
-                    LogClient.Instance.Send(string.Format("GetKspValue: Get prop {0}", prop.Name));
-
-                    var value = prop.GetGetMethod().IsStatic ? prop.GetValue(null, null) : instance != null ? prop.GetValue(instance, null) : null;
-
-                    LogClient.Instance.Send(string.Format("GetKspValue: Get prop value {0}", value));
-
-                    return wrappers.Any() ? GetKspValue(wrappers, value, prop.PropertyType) : value;
-                }
-
-                return null;
+                return wrappers.Any() ? GetKspValue(wrappers, memberValue, memberValue.GetType()) : memberValue;
             }
             catch (Exception ex)
             {
                 Debug.LogException(ex);
-                return null;
+                LogClient.Instance.Send(string.Format("Fatal error (GetKspValue): {0} {1}", ex.Message, ex.StackTrace));
+                return ex.Message;
             }
+        }
+
+        private bool GetTypeInstance(MemberInfoWrapper currentWrapper, out Type t, out object instance)
+        {
+            Type type;
+
+            instance = null;
+
+            var result = _types.TryGetValue(currentWrapper.TypeName, out type);
+
+            t = type;
+
+            if (!result) return false;
+
+            string instanceType;
+
+            result = _instantiateTypes.TryGetValue(type.Name, out instanceType);
+
+            if (!result) return true;
+
+            var instanceField = type.GetField(instanceType);
+
+            if (instanceField != null)
+            {
+                instance = instanceField.GetValue(null);
+            }
+
+            var instanceProp = type.GetProperty(instanceType);
+
+            if (instanceProp == null) return true;
+
+            instance = instanceProp.GetValue(null, null);
+
+            return true;
         }
 
         private object GetIndexedPropertyValue(object instance, MemberInfoWrapper wrapper)
         {
             if (instance == null) return null;
 
-            var listInstance = instance as IList;
+            var instanceType = instance.GetType();
 
-            if (listInstance != null)
+            if (instanceType.Implements<IList>())
             {
-                return listInstance[wrapper.Index];
+                return ((IList)instance)[wrapper.Index];
             }
 
-            if (instance.GetType().IsArray)
+            if (instanceType.IsArray)
             {
-                return instance.GetType().GetProperty("Item").GetValue(instance, new object[] { wrapper.Index });
+                return instance.GetElement(wrapper.Index);
             }
 
-            if (instance is IEnumerable)
-            {
-                return (instance as IEnumerable).Cast<object>().ElementAt(wrapper.Index);
-            }
-
-            return null;
+            return instanceType.Implements<IEnumerable>() ? ((IEnumerable)instance).Cast<object>().ElementAt(wrapper.Index) : null;
         }
 
         private void SetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
         {
             if (wrappers == null || !wrappers.Any()) return;
 
-            var first = wrappers.FirstOrDefault();
+            var currentWrapper = wrappers.FirstOrDefault();
 
-            LogClient.Instance.Send(string.Format("SetKspValue: First item {0}", first.Name));
+            LogClient.Instance.Send(string.Format("SetKspValue: First item {0}", currentWrapper.Name));
 
             wrappers = wrappers.Skip(1).ToList();
 
@@ -444,104 +395,58 @@ namespace SocketServer
             {
                 if (parent == null)
                 {
-                    if (!_types.ContainsKey(first.TypeName)) return;
+                    Type t;
+                    object obj;
+                    var result = GetTypeInstance(currentWrapper, out t, out obj);
 
-                    var type = _types[first.TypeName];
+                    if (!result) return;
 
-                    LogClient.Instance.Send(string.Format("SetKspValue: Get type {0}", type.Name));
-
-                    if (_instantiateTypes.ContainsKey(type.Name))
-                    {
-                        var instanceField = type.GetField(_instantiateTypes[type.Name]);
-
-                        if (instanceField == null)
-                        {
-                            var instanceProp = type.GetProperty(_instantiateTypes[type.Name]);
-
-                            if (instanceProp == null) return;
-
-                            SetKspValue(wrappers, instanceProp.GetValue(null, null), type);
-                        }
-
-                        var dataInstance = instanceField.GetValue(null);
-
-                        SetKspValue(wrappers, dataInstance, type);
-                    }
-
-                    SetKspValue(wrappers, null, type);
+                    SetKspValue(wrappers, obj, t);
                 }
 
                 //collection
 
-                if (instance != null)
+                var indexedValue = GetIndexedPropertyValue(instance, currentWrapper);
+
+                if (indexedValue != null)
                 {
-                    var parentType = instance.GetType();
-
-                    if (parentType.GetInterfaces().Contains(typeof(IEnumerable)))
-                    {
-                        LogClient.Instance.Send("Object is indexed");
-
-                        object value = GetIndexedPropertyValue(instance, first);
-
-                        LogClient.Instance.Send(string.Format("SetKspValue: Indexed property is {0}", value ?? "null"));
-
-                        if (value != null)
-                        {
-                            if (wrappers.Any())
-                                SetKspValue(wrappers, value, value.GetType());
-                        }
-                    }
-                }
-
-
-                var field = parent.GetField(first.Name);
-
-                if (field != null)
-                {
-                    LogClient.Instance.Send(string.Format("SetKspValue: Get field {0}", field.Name));
-
-                    var value = field.IsStatic ? field.GetValue(null) : instance != null ? field.GetValue(instance) : null;
-
-                    LogClient.Instance.Send(string.Format("SetKspValue: Get field value {0}", value));
+                    LogClient.Instance.Send(string.Format("SetKspValue: Indexed property is {0}", indexedValue));
 
                     if (wrappers.Any())
                     {
-                        SetKspValue(wrappers, value, field.FieldType);
-                    }
-                    else
-                    {
-                        var data = ConvertValue(field.FieldType, first.Value);
-
-                        if (data != null)
-                        {
-                            field.SetValue(field.IsStatic ? null : instance, data);
-                        }
+                        SetKspValue(wrappers, indexedValue, indexedValue.GetType());
                     }
                 }
 
-                var prop = parent.GetProperty(first.Name);
+                var member = parent.GetMember(currentWrapper.Name, MemberTypes.Field | MemberTypes.Property, BindingFlags.Instance | BindingFlags.Public | BindingFlags.Static).FirstOrDefault();
 
-                if (prop != null)
+                if (member == null) return;
+
+                if (wrappers.Any())
                 {
-                    LogClient.Instance.Send(string.Format("SetKspValue: Get prop {0}", prop.Name));
+                    LogClient.Instance.Send(string.Format("SetKspValue: Get member {0}", member.Name));
 
-                    var value = prop.GetGetMethod().IsStatic ? prop.GetValue(null, null) : instance != null ? prop.GetValue(instance, null) : null;
+                    var value = member.IsStatic() ? member.Get() : member.Get(instance);
 
-                    LogClient.Instance.Send(string.Format("SetKspValue: Get prop value {0}", value));
+                    LogClient.Instance.Send(string.Format("SetKspValue: Get member value {0}", value));
 
-                    if (wrappers.Any())
-                    {
-                        SetKspValue(wrappers, value, prop.PropertyType);
-                    }
-                    else
-                    {
-                        var data = ConvertValue(prop.PropertyType, first.Value);
+                    SetKspValue(wrappers, value, member.Type());
+                }
 
-                        if (data != null)
-                        {
-                            prop.SetValue(prop.GetGetMethod().IsStatic ? null : instance, data, null);
-                        }
-                    }
+
+                var data = ConvertValue(member.Type(), currentWrapper.Value);
+
+                if (member.IsWritable())
+                {
+                    LogClient.Instance.Send(string.Format("SetKspValue: Try setting value {0} for instance {1}", data, instance ?? "null"));
+
+                    member.Set(member.IsStatic() ? null : instance, data);
+
+                    LogClient.Instance.Send(string.Format("Member {0} has setted to {1}", member.Name, data));
+                }
+                else
+                {
+                    LogClient.Instance.Send(string.Format("SetKspValue: Member {0} is not writable", member.Name));
                 }
             }
             catch (Exception ex)
@@ -600,14 +505,6 @@ namespace SocketServer
         #endregion
 
         #region DataHelpers
-
-        private bool IsSimpleType(Type t)
-        {
-            return t.IsPrimitive || t == typeof(string) ||
-                   t == typeof(Guid) || t.IsEnum || t == typeof(Vector3) || t == typeof(Vector3d) || t == typeof(Quaternion) ||
-                   t == typeof(Vector2) || t == typeof(Vector2d) || t == typeof(Matrix4x4) || t == typeof(Matrix4x4D);
-
-        }
 
         private List<MemberInfoWrapper> ParseKspValue(MemberInfoWrapper data)
         {
