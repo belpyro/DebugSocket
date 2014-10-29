@@ -12,7 +12,7 @@ namespace DebugHelper.LogServer
     public class LogServer
     {
         private TcpListener _logListener;
-        private volatile bool isStopped = false;
+        private volatile bool _isStopped;
 
         public void Start()
         {
@@ -22,7 +22,7 @@ namespace DebugHelper.LogServer
 
         public void Stop()
         {
-            isStopped = true;
+            _isStopped = true;
             _logListener.Stop();
         }
 
@@ -37,7 +37,7 @@ namespace DebugHelper.LogServer
             {
                 while (true)
                 {
-                    if (isStopped) return;
+                    if (_isStopped) return;
 
                     var client = _logListener.AcceptTcpClient();
 
@@ -58,7 +58,7 @@ namespace DebugHelper.LogServer
                     }
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 _logListener.Stop();
             }

@@ -34,78 +34,90 @@
 
         </HierarchicalDataTemplate>
     </Window.Resources>
+    <Grid Name="Root">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width=".3*"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width=".7*"/>
+            <!--<ColumnDefinition Width="Auto"/>-->
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-    <xctk:BusyIndicator Name="Indicator" BusyContent="Loading...">
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width=".3*"/>
-                <ColumnDefinition Width=".7*"/>
-                <!--<ColumnDefinition Width="Auto"/>-->
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <xctk:ChildWindow Grid.RowSpan="5" Grid.ColumnSpan="3" WindowState="Closed" Name="cw" WindowStartupLocation="Center" IsModal="True" MinWidth="300" MinHeight="60">
+            <StackPanel Orientation="Horizontal" Margin="4" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                <TextBlock Margin="4" Text="Value" VerticalAlignment="Center"/>
+                <TextBox Width="120" Margin="4" VerticalAlignment="Center" HorizontalAlignment="Stretch" Text="{Binding Value, Mode=TwoWay}"/>
+                <Button Content="Set" MinWidth="60" Margin="4" Click="ButtonSetValue_Click"/>
+            </StackPanel>
 
-            <TextBox x:Name="CompleteBox" TextChanged="CompleteBox_OnTextChanged"/>
+        </xctk:ChildWindow>
 
-            <TreeView Grid.Row="1" Grid.Column="0" Name="TypeTree"/>
+        <TextBox Grid.Row="0" Grid.Column="0" x:Name="CompleteBox" TextChanged="CompleteBox_OnTextChanged"
+                     VerticalAlignment="Center" VerticalContentAlignment="Center"/>
 
-            <StatusBar Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2">
-                <Rectangle Fill="Firebrick" Margin="4" Width="24" Height="16"></Rectangle>
-                <TextBlock Text="Type" VerticalAlignment="Center"></TextBlock>
-                <Rectangle Fill="CornflowerBlue" Margin="4" Width="24" Height="16"></Rectangle>
-                <TextBlock Text="Field" VerticalAlignment="Center"></TextBlock>
-                <Rectangle Fill="DarkGreen" Margin="4" Width="24" Height="16"></Rectangle>
-                <TextBlock Text="Property" VerticalAlignment="Center"></TextBlock>
-                <Rectangle Fill="DarkOrange" Margin="4" Width="24" Height="16"></Rectangle>
-                <TextBlock Text="Collection" VerticalAlignment="Center"></TextBlock>
-            </StatusBar>
+        <ToolBar Grid.Row="0" Grid.Column="2">
+            <Button Margin="4" Width="26" Height="26" Click="ButtonBase_OnClick" ToolTip="Get types">
+                <Image Source="Images/All_reports.png"/>
+            </Button>
+            <Button Margin="4" Width="26" Height="26" Click="MethodsButton_OnClick" ToolTip="Get types">
+                <Image Source="Images/All_reports.png"/>
+            </Button>
+            <Button Margin="4" Width="26" Height="26" Click="EventsButton_OnClick" ToolTip="Get game events">
+                <Image Source="Images/light-32.png"/>
+            </Button>
+        </ToolBar>
 
-            <TabControl Grid.Column="1" Grid.Row="1">
-                <TabItem Name="MethodItem" Header="Methods">
-                    <TreeView ItemsSource="{Binding}"/>
-                </TabItem>
-                <TabItem Name="EventItem" Header="Game events">
-                    <ListBox Name="EventsBox" ItemsSource="{Binding}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding Name}" Margin="4" FontStretch="Normal" FontStyle="Normal" FontWeight="Regular" Foreground="Black"/>
-                                    <Button Content="Attach" Margin="4" Click="AttachEvent_Click">
-                                       <Button.Tag>
-                                            <x:Static Member="socketCommon:Commands.EventAttach"/> 
-                                       </Button.Tag> 
-                                    </Button>
-                                </StackPanel>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </TabItem>
+        <GridSplitter Grid.Column="1" Grid.RowSpan="2" VerticalAlignment="Stretch" HorizontalAlignment="Center" Width="4"></GridSplitter>
 
-                <TabItem Name="ManipulateItem" Header="Manipulate"></TabItem>
-                <TabItem Name="AttachedItem" Header="Attached object"></TabItem>
-            </TabControl>
+        <TreeView Grid.Row="1" Grid.Column="0" Name="TypeTree" MinWidth="100"/>
 
+        <TabControl Grid.Column="2" Grid.Row="1">
+            <TabItem Name="MethodItem" Header="Methods">
+                <TreeView ItemsSource="{Binding}"/>
+            </TabItem>
+            <TabItem Name="EventItem" Header="Game events">
+                <ListBox Name="EventsBox" ItemsSource="{Binding}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding Name}" Margin="4" FontStretch="Normal" FontStyle="Normal" FontWeight="Regular" Foreground="Black" VerticalAlignment="Center"/>
+                                <Button Content="Attach" Margin="4" Click="AttachEvent_Click" MinWidth="60">
+                                    <Button.Tag>
+                                        <x:Static Member="socketCommon:Commands.EventAttach"/>
+                                    </Button.Tag>
+                                </Button>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </TabItem>
 
-            <ToolBar Grid.Row="0" Grid.Column="1">
-                <Button Margin="4" Width="26" Height="26" Click="ButtonBase_OnClick" ToolTip="Get types">
-                    <Image Source="Images/All_reports.png"/>
-                </Button>
-                <Button Margin="4" Width="26" Height="26" Click="MethodsButton_OnClick" ToolTip="Get types">
-                    <Image Source="Images/All_reports.png"/>
-                </Button>
-                <Button Margin="4" Width="26" Height="26" Click="EventsButton_OnClick" ToolTip="Get game events">
-                    <Image Source="Images/light-32.png"/>
-                </Button>
-            </ToolBar>
+            <TabItem Name="ManipulateItem" Header="Manipulate"></TabItem>
+            <TabItem Name="AttachedItem" Header="Attached object"></TabItem>
+        </TabControl>
 
-            <ScrollViewer Grid.Row="2" Grid.ColumnSpan="2" Grid.Column="0" VerticalScrollBarVisibility="Visible" CanContentScroll="True" Height="60" Name="MyScrollViewer">
-                <TextBlock  TextWrapping="Wrap" Name="LogBlock"/>
-            </ScrollViewer>
-            
-        </Grid>
-    </xctk:BusyIndicator>
+        <GridSplitter Grid.Row="2" Grid.ColumnSpan="3" Height="4" HorizontalAlignment="Stretch" VerticalAlignment="Center"/>
+
+        <ScrollViewer Grid.Row="3" Grid.ColumnSpan="3" Grid.Column="0" VerticalScrollBarVisibility="Visible" CanContentScroll="True" MinHeight="60" Name="MyScrollViewer">
+            <TextBlock  TextWrapping="Wrap" Name="LogBlock"/>
+        </ScrollViewer>
+
+        <StatusBar Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="3">
+            <Rectangle Fill="Firebrick" Margin="4" Width="24" Height="16"></Rectangle>
+            <TextBlock Text="Type" VerticalAlignment="Center"></TextBlock>
+            <Rectangle Fill="CornflowerBlue" Margin="4" Width="24" Height="16"></Rectangle>
+            <TextBlock Text="Field" VerticalAlignment="Center"></TextBlock>
+            <Rectangle Fill="DarkGreen" Margin="4" Width="24" Height="16"></Rectangle>
+            <TextBlock Text="Property" VerticalAlignment="Center"></TextBlock>
+            <Rectangle Fill="DarkOrange" Margin="4" Width="24" Height="16"></Rectangle>
+            <TextBlock Text="Collection" VerticalAlignment="Center"></TextBlock>
+        </StatusBar>
+
+    </Grid>
 </Window>

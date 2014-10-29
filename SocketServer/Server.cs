@@ -94,7 +94,7 @@ namespace SocketServer
                         DataResponce responce = null;
 
                         LogClient.Instance.Send(string.Format("Command {0} recieved", request.Command));
-                        
+
                         switch (request.Command)
                         {
                             case Commands.CheckConnection:
@@ -112,7 +112,7 @@ namespace SocketServer
                                 }
                                 break;
                             case Commands.GetValue:
-                                var result = ParseKspValue(request.Info);
+                                var result = GetKspValue(ParseKspValue(request.Info));
                                 if (result != null)
                                 {
                                     responce = new DataResponce(false, new MemberInfoWrapper()
@@ -169,7 +169,7 @@ namespace SocketServer
                                 EventSubscriber.Instance.UnSubscribe(request.Info.Name);
                                 break;
                             case Commands.SetValue:
-                                ParseKspValue(request.Info);
+                                SetKspValue(ParseKspValue(request.Info));
                                 break;
                             default:
                                 throw new ArgumentOutOfRangeException();
@@ -230,13 +230,15 @@ namespace SocketServer
         {
             var result = new List<MemberInfoWrapper>();
 
-            var source = ParseKspValue(info);
+            var source = GetKspValue(ParseKspValue(info));
 
             if (source == null) return null;
 
             if (!source.GetType().GetInterfaces().Contains(typeof(IEnumerable))) return null;
 
             var i = 0;
+
+            LogClient.Instance.Send(string.Format("Collection: {0} has {1} count children", source, (source as IEnumerable).Cast<object>().Count()));
 
             foreach (var item in (IEnumerable)source)
             {
@@ -247,7 +249,8 @@ namespace SocketServer
                         Name = item.GetType().Name,
                         TypeName = item.GetType().Name,
                         ItemType = MemberType.Type,
-                        Index = i
+                        Index = i,
+                        IsStatic = false
                     });
                 }
                 else
@@ -257,7 +260,8 @@ namespace SocketServer
                         Name = item.GetType().Name,
                         ItemType = MemberType.Property,
                         TypeName = item.GetType().Name,
-                        Index = i
+                        Index = i,
+                        IsStatic = false
                     });
                 }
 
@@ -295,8 +299,8 @@ namespace SocketServer
             }
             catch (Exception ex)
             {
-               LogClient.Instance.Send(string.Format("Fatal error (GetChildren): {0} {1}", ex.Message, ex.StackTrace)); 
-               return null;
+                LogClient.Instance.Send(string.Format("Fatal error (GetChildren): {0} {1}", ex.Message, ex.StackTrace));
+                return null;
             }
         }
 
@@ -349,17 +353,19 @@ namespace SocketServer
 
                     if (parentType.GetInterfaces().Contains(typeof(IEnumerable)))
                     {
-                        LogClient.Instance.Send("GetKspValue: Object is indexed");
+                        LogClient.Instance.Send(string.Format("GetKspValue: Object is indexed. Parent type is {0}", parentType));
 
-                        var indexedProp = parentType.GetProperties().Where(x => x.GetIndexParameters().Any()).FirstOrDefault(x =>
-                            x.GetIndexParameters().All(m => m.ParameterType.IsPrimitive));
-                        
-                        LogClient.Instance.Send(string.Format("GetKspValue: Indexed property is {0}", indexedProp != null ? indexedProp.Name : "null"));
+                        object value = null;
 
-                        if (indexedProp != null)
+                        value = GetIndexedPropertyValue(instance, currentWrapper);
+
+                        LogClient.Instance.Send(string.Format("GetKspValue: Indexed property is {0}", value ?? "null"));
+
+
+                        if (value != null)
                         {
-                            var value = indexedProp.GetValue(instance, new object[] { currentWrapper.Index });
-                            return wrappers.Any() ? GetKspValue(wrappers, value, indexedProp.PropertyType) : value;
+                            //var value = indexedProp.GetValue(instance, new object[] { currentWrapper.Index });
+                            return wrappers.Any() ? GetKspValue(wrappers, value, value.GetType()) : value;
                         }
                     }
                 }
@@ -369,7 +375,7 @@ namespace SocketServer
 
                 if (field != null)
                 {
-                    LogClient.Instance.Send(string.Format("GetKspValue: Get field {0} from instance {1}", field.Name, instance ?? "null"));
+                    LogClient.Instance.Send(string.Format("GetKspValue: Get field {0} from instance {1} (isStatic = {2})", field.Name, instance ?? "null", field.IsStatic));
 
                     var value = field.IsStatic ? field.GetValue(null) : instance != null ? field.GetValue(instance) : null;
 
@@ -400,13 +406,35 @@ namespace SocketServer
             }
         }
 
+        private object GetIndexedPropertyValue(object instance, MemberInfoWrapper wrapper)
+        {
+            if (instance == null) return null;
+
+            var listInstance = instance as IList;
+
+            if (listInstance != null)
+            {
+                return listInstance[wrapper.Index];
+            }
+
+            if (instance.GetType().IsArray)
+            {
+                return instance.GetType().GetProperty("Item").GetValue(instance, new object[] { wrapper.Index });
+            }
+
+            if (instance is IEnumerable)
+            {
+                return (instance as IEnumerable).Cast<object>().ElementAt(wrapper.Index);
+            }
+
+            return null;
+        }
+
         private void SetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
         {
             if (wrappers == null || !wrappers.Any()) return;
 
             var first = wrappers.FirstOrDefault();
-
-            Debug.Log("First item " + first.Name);
 
             LogClient.Instance.Send(string.Format("SetKspValue: First item {0}", first.Name));
 
@@ -453,15 +481,14 @@ namespace SocketServer
                     {
                         LogClient.Instance.Send("Object is indexed");
 
-                        var indexedProp = parentType.GetProperties().Where(x => x.GetIndexParameters().Any()).FirstOrDefault(x =>
-                            x.GetIndexParameters().All(m => m.ParameterType.IsPrimitive));
+                        object value = GetIndexedPropertyValue(instance, first);
 
-                        if (indexedProp != null)
+                        LogClient.Instance.Send(string.Format("SetKspValue: Indexed property is {0}", value ?? "null"));
+
+                        if (value != null)
                         {
-                            var value = indexedProp.GetValue(instance, new object[] { first.Index });
-
                             if (wrappers.Any())
-                                SetKspValue(wrappers, value, indexedProp.PropertyType);
+                                SetKspValue(wrappers, value, value.GetType());
                         }
                     }
                 }
@@ -578,11 +605,11 @@ namespace SocketServer
         {
             return t.IsPrimitive || t == typeof(string) ||
                    t == typeof(Guid) || t.IsEnum || t == typeof(Vector3) || t == typeof(Vector3d) || t == typeof(Quaternion) ||
-                   t == typeof(Vector2) || t == typeof(Vector2d);
+                   t == typeof(Vector2) || t == typeof(Vector2d) || t == typeof(Matrix4x4) || t == typeof(Matrix4x4D);
 
         }
 
-        private object ParseKspValue(MemberInfoWrapper data)
+        private List<MemberInfoWrapper> ParseKspValue(MemberInfoWrapper data)
         {
             var items = new List<MemberInfoWrapper>();
 
@@ -596,13 +623,15 @@ namespace SocketServer
 
             items.Reverse();
 
-            if (data.Value == null)
-            {
-                return GetKspValue(items);
-            }
+            return items;
 
-            SetKspValue(items);
-            return "ok";
+            //if (data.Value == null)
+            //{
+            //    return GetKspValue(items);
+            //}
+
+            //SetKspValue(items);
+            //return "ok";
         }
 
         private object ConvertValue(Type t, object o)

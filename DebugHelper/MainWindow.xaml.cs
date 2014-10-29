@@ -14,6 +14,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using SocketCommon;
 using SocketCommon.Wrappers.Tree;
+using Xceed.Wpf.Toolkit;
 
 namespace DebugHelper
 {
@@ -24,8 +25,6 @@ namespace DebugHelper
     {
         private DebugViewModel _model;
 
-        private readonly BackgroundWorker _loadingWorker = new BackgroundWorker();
-
         private LogServer.LogServer _server = new LogServer.LogServer();
 
         public MainWindow()
@@ -34,27 +33,19 @@ namespace DebugHelper
             Loaded += MainWindow_Loaded;
             Closed += MainWindow_Closed;
             AddHandler(TreeViewItem.ExpandedEvent, new RoutedEventHandler(ItemExpanded), true);
-            _loadingWorker.DoWork += _loadingWorker_DoWork;
-            _loadingWorker.RunWorkerCompleted += _loadingWorker_RunWorkerCompleted;
+            AddHandler(MouseDoubleClickEvent, new RoutedEventHandler(ItemClicked), true);
+        }
+
+        private void ItemClicked(object sender, RoutedEventArgs e)
+        {
+            cw.DataContext = (TypeTree.SelectedItem as TreeViewItem).Tag;
+            cw.Show();
         }
 
         void MainWindow_Closed(object sender, EventArgs e)
         {
-            _loadingWorker.DoWork -= _loadingWorker_DoWork;
-            _loadingWorker.RunWorkerCompleted -= _loadingWorker_RunWorkerCompleted;
             _server.OnRecieved -= _server_OnRecieved;
             _server.Stop();
-        }
-
-        void _loadingWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            TypesLoaded();
-            Indicator.IsBusy = false;
-        }
-
-        void _loadingWorker_DoWork(object sender, DoWorkEventArgs e)
-        {
-            _model.LoadKspTypes();
         }
 
         private void ItemExpanded(object sender, RoutedEventArgs e)
@@ -193,10 +184,21 @@ namespace DebugHelper
 
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
-            if (_loadingWorker.IsBusy) return;
+            //var cw = new ChildWindow
+            //{
+            //    WindowStartupLocation = Xceed.Wpf.Toolkit.WindowStartupLocation.Center,
+            //    IsModal = true,
+            //    Content = new TextBlock() {Text = "asasasas"}
+            //};
 
-            Indicator.IsBusy = true;
-            _loadingWorker.RunWorkerAsync();
+            //cw.SetValue(Grid.RowSpanProperty, 4);
+            //cw.SetValue(Grid.ColumnSpanProperty, 3);
+
+            //Root.Children.Add(cw);
+            //Indicator.IsBusy = true;
+            _model.LoadKspTypes();
+            TypesLoaded();
+            //Indicator.IsBusy = false;
         }
 
         private void SetButton_OnClick(object sender, RoutedEventArgs e)
@@ -258,6 +260,19 @@ namespace DebugHelper
                     btn.Tag = Commands.EventAttach;
                     break;
             }
+        }
+
+        private void ButtonSetValue_Click(object sender, RoutedEventArgs e)
+        {
+            var item = TypeTree.SelectedItem as TreeViewItem;
+
+            if (item == null) return;
+
+            var info = item.Tag as MemberInfoWrapper;
+
+            if (info == null) return;
+
+            _model.SetValue(info); 
         }
     }
 }
