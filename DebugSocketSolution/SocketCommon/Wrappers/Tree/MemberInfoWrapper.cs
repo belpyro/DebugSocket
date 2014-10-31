@@ -6,13 +6,16 @@ using SocketCommon.Annotations;
 namespace SocketCommon.Wrappers.Tree
 {
     [Serializable]
-    public class MemberInfoWrapper: INotifyPropertyChanged
+    public sealed class MemberInfoWrapper: INotifyPropertyChanged
     {
         private string _name;
         private string _typeName;
         private object _value;
         private MemberType _itemType;
 
+        /// <summary>
+        /// Name of member
+        /// </summary>
         public string Name
         {
             get { return _name; }
@@ -24,6 +27,9 @@ namespace SocketCommon.Wrappers.Tree
             }
         }
 
+        /// <summary>
+        /// Name of member type
+        /// </summary>
         public string TypeName
         {
             get { return _typeName; }
@@ -35,6 +41,9 @@ namespace SocketCommon.Wrappers.Tree
             }
         }
 
+        /// <summary>
+        /// Current value. Can be set for changing.
+        /// </summary>
         public object Value
         {
             get { return _value; }
@@ -46,6 +55,9 @@ namespace SocketCommon.Wrappers.Tree
             }
         }
 
+        /// <summary>
+        /// Type for current member (property, field, collection, etc)
+        /// </summary>
         public MemberType ItemType
         {
             get { return _itemType; }
@@ -57,11 +69,25 @@ namespace SocketCommon.Wrappers.Tree
             }
         }
 
+        /// <summary>
+        /// Current member is static
+        /// </summary>
         public bool IsStatic { get; set; }
 
+        /// <summary>
+        /// Parent for current member. This is using for graph creation.
+        /// </summary>
         public MemberInfoWrapper Parent { get; set; }
 
+        /// <summary>
+        /// Index for element from collection.
+        /// </summary>
         public int Index { get; set; }
+
+        /// <summary>
+        /// Name of method for calling on a server side.
+        /// </summary>
+        public string MethodName { get; set; }
 
         #region PropertyChanged
 
@@ -69,7 +95,7 @@ namespace SocketCommon.Wrappers.Tree
         public event PropertyChangedEventHandler PropertyChanged;
 
         [NotifyPropertyChangedInvocator]
-        protected virtual void OnPropertyChanged(string propertyName)
+        private void OnPropertyChanged(string propertyName)
         {
             PropertyChangedEventHandler handler = PropertyChanged;
             if (handler != null) handler(this, new PropertyChangedEventArgs(propertyName));

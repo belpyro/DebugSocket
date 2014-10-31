@@ -6,7 +6,7 @@ namespace SocketCommon
     [Serializable]
     public class DataResponce
     {
-        protected DataResponce(){}
+        private DataResponce(){}
 
         public DataResponce(bool isError, object value)
         {
@@ -14,8 +14,8 @@ namespace SocketCommon
             Data = value;
         } 
 
-        public bool HasError { get; set; } 
+        public bool HasError { get; private set; } 
 
-        public object Data { get; set; }
+        public object Data { get; private set; }
     }
 }

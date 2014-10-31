@@ -19,7 +19,7 @@
         <HierarchicalDataTemplate DataType="{x:Type tree:MethodInfoWrapper}" ItemsSource="{Binding Parameters}">
             <StackPanel Orientation="Horizontal" Margin="4">
                 <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Margin="4"/>
-                <Button Height="16" Width="16" Margin="4">
+                <Button Height="16" Width="16" Margin="4" Tag="{Binding Name}" Click="MethodExecuteButton_Click">
                     <Image Source="Images/automation_robotics_process-32.png"/>
                 </Button>
             </StackPanel>
@@ -62,7 +62,7 @@
                      VerticalAlignment="Center" VerticalContentAlignment="Center"/>
 
         <ToolBar Grid.Row="0" Grid.Column="2">
-            <Button Margin="4" Width="26" Height="26" Click="ButtonBase_OnClick" ToolTip="Get types">
+            <Button Margin="4" Width="26" Height="26" Click="GetAllTypesButton_OnClick" ToolTip="Get types">
                 <Image Source="Images/All_reports.png"/>
             </Button>
             <Button Margin="4" Width="26" Height="26" Click="MethodsButton_OnClick" ToolTip="Get types">

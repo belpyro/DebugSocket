@@ -144,6 +144,23 @@ namespace SocketServer
                             case Commands.SetValue:
                                 SetKspValue(ParseKspValue(request.Info));
                                 break;
+                            case Commands.CallMethod:
+                                var calledObj = GetKspValue(ParseKspValue(request.Info));
+
+                                if (calledObj != null && !calledObj.GetType().IsSimpleKspType())
+                                {
+                                    try
+                                    {
+                                        calledObj.CallMethod(request.Info.MethodName);
+                                        LogClient.Instance.Send(string.Format("Method {0} for instance {1} was called succesfully", request.Info.MethodName, calledObj));
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        LogClient.Instance.Send(string.Format("Fatal error (call method): {0} {1}", ex.Message, ex.StackTrace));
+                                    }
+                                }
+
+                                break;
                             default:
                                 throw new ArgumentOutOfRangeException();
                         }
@@ -521,20 +538,17 @@ namespace SocketServer
             items.Reverse();
 
             return items;
-
-            //if (data.Value == null)
-            //{
-            //    return GetKspValue(items);
-            //}
-
-            //SetKspValue(items);
-            //return "ok";
         }
 
         private object ConvertValue(Type t, object o)
         {
             try
             {
+                if (t == typeof(int))
+                {
+                    return int.Parse(o.ToString());
+                }
+
                 if (t == typeof(bool))
                 {
                     return bool.Parse(o.ToString());

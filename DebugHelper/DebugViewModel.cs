@@ -15,7 +15,7 @@ namespace DebugHelper
     {
         public void LoadKspTypes()
         {
-            var result = DebugModel.Instance.GetValue(null, Commands.GetTypes);
+            var result = DebugModel.Instance.ExecuteCommand(null, Commands.GetTypes);
 
             if (result == null || result.HasError) return;
 
@@ -26,58 +26,63 @@ namespace DebugHelper
 
         public object GetKspValue(MemberInfoWrapper wrapper)
         {
-            DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetValue);
+            DataResponce result = DebugModel.Instance.ExecuteCommand(wrapper, Commands.GetValue);
 
             return result.HasError ? null : result.Data;
         }
 
         public IEnumerable<MemberInfoWrapper> GetKspCollection(MemberInfoWrapper wrapper)
         {
-            DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetCollection);
+            DataResponce result = DebugModel.Instance.ExecuteCommand(wrapper, Commands.GetCollection);
 
             return (IEnumerable<MemberInfoWrapper>) (result.HasError ? null : result.Data);
         }
 
         public IEnumerable<MemberInfoWrapper> GetChildren(MemberInfoWrapper wrapper)
         {
-            DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetChildren);
+            DataResponce result = DebugModel.Instance.ExecuteCommand(wrapper, Commands.GetChildren);
 
             return (IEnumerable<MemberInfoWrapper>) (result.HasError ? null : result.Data);
         }
         public MemberInfoWrapper GetExternalWrapper()
         {
-            DataResponce result = DebugModel.Instance.GetValue(null, Commands.GetExternal);
+            DataResponce result = DebugModel.Instance.ExecuteCommand(null, Commands.GetExternal);
 
             return (MemberInfoWrapper) (result.HasError ? null : result.Data);
         }
 
         public IEnumerable<MethodInfoWrapper> GetMethods(MemberInfoWrapper wrapper)
         {
-           DataResponce result = DebugModel.Instance.GetValue(wrapper, Commands.GetMethods);
+           DataResponce result = DebugModel.Instance.ExecuteCommand(wrapper, Commands.GetMethods);
 
            return (IEnumerable<MethodInfoWrapper>)(result.HasError ? null : result.Data);
         }
 
         public IEnumerable<MemberInfoWrapper> GetGameEvents()
         {
-           DataResponce result = DebugModel.Instance.GetValue(null, Commands.GetGameEvents);
+           DataResponce result = DebugModel.Instance.ExecuteCommand(null, Commands.GetGameEvents);
 
            return (IEnumerable<MemberInfoWrapper>)(result.HasError ? null : result.Data);
         }
 
         public void SetValue(MemberInfoWrapper wrapper)
         {
-            DebugModel.Instance.GetValue(wrapper, Commands.SetValue);
+            DebugModel.Instance.ExecuteCommand(wrapper, Commands.SetValue);
         }
 
         public void AttachToEvent(MemberInfoWrapper wrapper)
         {
-            DebugModel.Instance.GetValue(wrapper, Commands.EventAttach);
+            DebugModel.Instance.ExecuteCommand(wrapper, Commands.EventAttach);
         }
 
         public void DettachToEvent(MemberInfoWrapper wrapper)
         {
-            DebugModel.Instance.GetValue(wrapper, Commands.EventDetach);
+            DebugModel.Instance.ExecuteCommand(wrapper, Commands.EventDetach);
+        }
+        
+        public void CallMethod(MemberInfoWrapper wrapper)
+        {
+            DebugModel.Instance.ExecuteCommand(wrapper, Commands.CallMethod);
         }
 
         public IEnumerable<MemberInfoWrapper> LoadedTypes { get; private set; }

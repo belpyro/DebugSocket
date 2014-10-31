@@ -1,8 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace SocketCommon
+﻿namespace SocketCommon
 {
     public enum Commands
     {
@@ -16,6 +12,7 @@ namespace SocketCommon
         GetGameEvents,
         SetValue,
         EventAttach,
-        EventDetach
+        EventDetach,
+        CallMethod
     }
 }

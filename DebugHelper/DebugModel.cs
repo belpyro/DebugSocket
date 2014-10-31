@@ -27,7 +27,7 @@ namespace DebugHelper
             }
         }
 
-        public DataResponce GetValue(MemberInfoWrapper wrapper, Commands command)
+        public DataResponce ExecuteCommand(MemberInfoWrapper wrapper, Commands command)
         {
             using (var client = new TcpClient(AddressFamily.InterNetwork))
             {

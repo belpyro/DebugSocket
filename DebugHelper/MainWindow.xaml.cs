@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -13,6 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using SocketCommon;
+using SocketCommon.Helpers;
 using SocketCommon.Wrappers.Tree;
 using Xceed.Wpf.Toolkit;
 
@@ -33,13 +35,17 @@ namespace DebugHelper
             Loaded += MainWindow_Loaded;
             Closed += MainWindow_Closed;
             AddHandler(TreeViewItem.ExpandedEvent, new RoutedEventHandler(ItemExpanded), true);
-            AddHandler(MouseDoubleClickEvent, new RoutedEventHandler(ItemClicked), true);
+            AddHandler(TreeViewItem.PreviewMouseRightButtonDownEvent, new RoutedEventHandler(ItemClicked), true);
         }
 
         private void ItemClicked(object sender, RoutedEventArgs e)
         {
-            cw.DataContext = (TypeTree.SelectedItem as TreeViewItem).Tag;
-            cw.Show();
+            var item = e.Source as TreeViewItem;
+
+            if (item == null) return;
+
+            item.IsSelected = true;
+            e.Handled = true;
         }
 
         void MainWindow_Closed(object sender, EventArgs e)
@@ -87,11 +93,29 @@ namespace DebugHelper
 
             var obj = item.Tag as MemberInfoWrapper;
 
+            if (obj == null) return;
+
             obj.Value = wrapper.Value;
 
             var child = new TreeViewItem() { Header = wrapper.Value ?? "no value or no instantiate", Tag = obj };
 
             item.Items.Add(child);
+
+            var cm = new ContextMenu();
+            var menuItem = new MenuItem() { Header = "Set value" };
+            menuItem.Click += menuItem_Click;
+            cm.Items.Add(menuItem);
+            item.ContextMenu = cm;
+        }
+
+        void menuItem_Click(object sender, RoutedEventArgs e)
+        {
+            var value = TypeTree.SelectedItem as TreeViewItem;
+
+            if (value == null) return;
+
+            cw.DataContext = value.Tag;
+            cw.Show();
         }
 
         private void FillItemByChildren(TreeViewItem item, IEnumerable<MemberInfoWrapper> data)
@@ -186,38 +210,9 @@ namespace DebugHelper
             }
         }
 
-        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
+        private void GetAllTypesButton_OnClick(object sender, RoutedEventArgs e)
         {
-            //var cw = new ChildWindow
-            //{
-            //    WindowStartupLocation = Xceed.Wpf.Toolkit.WindowStartupLocation.Center,
-            //    IsModal = true,
-            //    Content = new TextBlock() {Text = "asasasas"}
-            //};
-
-            //cw.SetValue(Grid.RowSpanProperty, 4);
-            //cw.SetValue(Grid.ColumnSpanProperty, 3);
-
-            //Root.Children.Add(cw);
-            //Indicator.IsBusy = true;
-            _model.LoadKspTypes();
-            TypesLoaded();
-            //Indicator.IsBusy = false;
-        }
-
-        private void SetButton_OnClick(object sender, RoutedEventArgs e)
-        {
-            var item = TypeTree.SelectedItem as TreeViewItem;
-
-            if (item == null) return;
-
-            var info = item.Tag as MemberInfoWrapper;
-
-            if (info == null) return;
-
-            info.Value = _model.SelectedValue;
-
-            _model.SetValue(info);
+            Task.Factory.StartNew(() => _model.LoadKspTypes()).ContinueWith(t => Dispatcher.Invoke(TypesLoaded));
         }
 
         private void MethodsButton_OnClick(object sender, RoutedEventArgs e)
@@ -276,7 +271,26 @@ namespace DebugHelper
 
             if (info == null) return;
 
-            _model.SetValue(info); 
+            _model.SetValue(info);
+
+            cw.Close();
+        }
+
+        private void MethodExecuteButton_Click(object sender, RoutedEventArgs e)
+        {
+            var source = sender as Button;
+
+            if (source.IsNull()) return;
+
+            var item = TypeTree.SelectedItem as TreeViewItem;
+
+            if (item.IsNull()) return;
+
+            var wrapper = item.Tag as MemberInfoWrapper;
+
+            wrapper.MethodName = source.Tag.ToString();
+
+            _model.CallMethod(wrapper);
         }
     }
 }

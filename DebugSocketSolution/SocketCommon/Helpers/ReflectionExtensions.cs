@@ -24,9 +24,9 @@ namespace SocketCommon.Helpers
             switch (info.MemberType)
             {
                 case MemberTypes.Field:
-                    return (info as FieldInfo).ConvertToWrapper((info as FieldInfo).FieldType.IsSimpleKspType());
+                    return (info as FieldInfo).ConvertToWrapper(((FieldInfo)info).FieldType.IsSimpleKspType());
                 case MemberTypes.Property:
-                    return (info as PropertyInfo).ConvertToWrapper((info as PropertyInfo).PropertyType.IsSimpleKspType());
+                    return (info as PropertyInfo).ConvertToWrapper(((PropertyInfo)info).PropertyType.IsSimpleKspType());
                 default:
                     throw new ArgumentOutOfRangeException();
             }
@@ -39,7 +39,7 @@ namespace SocketCommon.Helpers
                 Name = info.Name,
                 ItemType =
                     (info.FieldType.IsClass || info.FieldType.IsValueType) && !isSimple
-                        ? info.FieldType.GetInterfaces().Contains(typeof (IEnumerable))
+                        ? info.FieldType.GetInterfaces().Contains(typeof(IEnumerable))
                             ? MemberType.Collection
                             : MemberType.Type
                         : MemberType.Field,
@@ -47,7 +47,7 @@ namespace SocketCommon.Helpers
                 IsStatic = info.IsStatic
             };
         }
-        
+
         public static MemberInfoWrapper ConvertToWrapper(this PropertyInfo info, bool isSimple = true)
         {
             return new MemberInfoWrapper()
@@ -56,14 +56,13 @@ namespace SocketCommon.Helpers
                 TypeName = info.PropertyType.Name,
                 ItemType =
                     (info.PropertyType.IsClass || info.PropertyType.IsValueType) && !isSimple
-                        ? info.PropertyType.GetInterfaces().Contains(typeof (IEnumerable))
+                        ? info.PropertyType.GetInterfaces().Contains(typeof(IEnumerable))
                             ? MemberType.Collection
                             : MemberType.Type
                         : MemberType.Property,
                 IsStatic = info.GetGetMethod().IsStatic
             };
         }
-
 
         public static MethodInfoWrapper ConvertToWrapper(this MethodInfo info)
         {
@@ -77,6 +76,11 @@ namespace SocketCommon.Helpers
                     TypeName = x.ParameterType.Name
                 }).ToList() : null
             };
+        }
+
+        public static bool IsNull(this object obj)
+        {
+            return obj == null;
         }
     }
 }
