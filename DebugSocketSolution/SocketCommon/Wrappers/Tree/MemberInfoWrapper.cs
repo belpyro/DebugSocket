@@ -87,7 +87,7 @@ namespace SocketCommon.Wrappers.Tree
         /// <summary>
         /// Name of method for calling on a server side.
         /// </summary>
-        public string MethodName { get; set; }
+        public List<MethodInfoWrapper> Methods { get; set; }
 
         #region PropertyChanged
 
@@ -102,5 +102,6 @@ namespace SocketCommon.Wrappers.Tree
         }
  
         #endregion
+
     }
 }
