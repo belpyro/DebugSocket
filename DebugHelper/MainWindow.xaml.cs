@@ -157,7 +157,7 @@ namespace DebugHelper
 
                 if (wrapper.IsStatic)
                 {
-                    dataItem.FontWeight = FontWeights.SemiBold;
+                    dataItem.FontWeight = FontWeights.Medium;
                     dataItem.FontStyle = FontStyles.Italic;
                 }
 

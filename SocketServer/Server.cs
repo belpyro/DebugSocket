@@ -187,15 +187,16 @@ namespace SocketServer
                                     {
                                         var calledObj = GetKspValue(ParseKspValue(request.Info));
 
+                                        LogClient.Instance.Send(string.Format("CalledObj is {0}",
+                                                calledObj));
+
                                         if (calledObj != null && !calledObj.GetType().IsSimpleKspType())
                                         {
-                                            calledObj.CallMethod(method.Name, parameters);
-                                        }
-
-                                        LogClient.Instance.Send(
+                                            method_result = parameters != null ? calledObj.CallMethod(method.Name, parameters) : calledObj.CallMethod(method.Name);
+                                            LogClient.Instance.Send(
                                             string.Format("Method {0} for instance {1} was called succesfully",
                                                 method.Name, calledObj));
-
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
@@ -354,7 +355,7 @@ namespace SocketServer
 
         private object GetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
         {
-            if (wrappers == null || !wrappers.Any()) return "wrappers is empty";
+            if (wrappers == null || !wrappers.Any()) return instance ?? "wrappers is empty";
 
             var currentWrapper = wrappers.FirstOrDefault();
 
@@ -416,24 +417,15 @@ namespace SocketServer
 
             if (!result) return false;
 
-            string instanceType;
+            string instanceName;
 
-            result = _instantiateTypes.TryGetValue(type.Name, out instanceType);
+            result = _instantiateTypes.TryGetValue(type.Name, out instanceName);
 
             if (!result) return true;
 
-            var instanceField = type.GetField(instanceType);
+            instance = type.Member(instanceName, Flags.StaticPublicDeclaredOnly).Get();
 
-            if (instanceField != null)
-            {
-                instance = instanceField.GetValue(null);
-            }
-
-            var instanceProp = type.GetProperty(instanceType);
-
-            if (instanceProp == null) return true;
-
-            instance = instanceProp.GetValue(null, null);
+            LogClient.Instance.Send(string.Format("Instance name {2} type {0} was loaded sucsefull {1}", t.Name, instance, instanceName));
 
             return true;
         }

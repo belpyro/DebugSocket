@@ -1,2 +1,6 @@
 ﻿FlightGlobals,fetch
 FlightDriver,fetch
+EditorPartList,Instance
+EditorPartsListController,fetch
+EditorPanels,Instance
+EditorLogic,fetch
