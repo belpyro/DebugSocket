@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using SocketCommon;
 using SocketCommon.Helpers;
 using SocketCommon.Wrappers.Tree;
@@ -156,7 +157,7 @@ namespace DebugHelper
 
                 if (wrapper.IsStatic)
                 {
-                    dataItem.FontWeight = FontWeights.SemiBold;
+                    dataItem.FontWeight = FontWeights.Medium;
                     dataItem.FontStyle = FontStyles.Italic;
                 }
 
@@ -212,7 +213,12 @@ namespace DebugHelper
 
         private void GetAllTypesButton_OnClick(object sender, RoutedEventArgs e)
         {
-            Task.Factory.StartNew(() => _model.LoadKspTypes()).ContinueWith(t => Dispatcher.Invoke(TypesLoaded));
+            StatusProgressBar.IsIndeterminate = true;
+            Task.Factory.StartNew(() => _model.LoadKspTypes()).ContinueWith(t =>
+            {
+                Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(TypesLoaded));
+                Dispatcher.Invoke(() => StatusProgressBar.IsIndeterminate = false);
+            });
         }
 
         private void MethodsButton_OnClick(object sender, RoutedEventArgs e)
@@ -288,9 +294,35 @@ namespace DebugHelper
 
             var wrapper = item.Tag as MemberInfoWrapper;
 
-            wrapper.MethodName = source.Tag.ToString();
+            {
+                DependencyObject obj = VisualTreeHelper.GetParent((DependencyObject)sender);
 
-            _model.CallMethod(wrapper);
+                do
+                {
+                    if (obj is TreeViewItem) break;
+                    obj = VisualTreeHelper.GetParent(obj);
+
+                } while (obj != null);
+
+                if (obj == null) return;
+
+                var method = (obj as TreeViewItem).DataContext as MethodInfoWrapper;
+
+                if (method == null) return;
+
+                var clone = new MemberInfoWrapper()
+                {
+                    Name = wrapper.Name,
+                    TypeName = wrapper.TypeName,
+                    Index = wrapper.Index,
+                    IsStatic = wrapper.IsStatic,
+                    ItemType = wrapper.ItemType,
+                    Methods = new List<MethodInfoWrapper>() { method },
+                    Parent = wrapper.Parent
+                };
+
+                _model.CallMethod(clone);
+            }
         }
 
         private void RefreshButton_OnClick(object sender, RoutedEventArgs e)

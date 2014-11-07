@@ -24,6 +24,7 @@ namespace SocketServer
     {
         private readonly Dictionary<string, string> _instantiateTypes = new Dictionary<string, string>();
         private readonly Dictionary<string, Type> _types = new Dictionary<string, Type>();
+        private readonly Dictionary<string, List<MethodInfoWrapper>> _methods = new Dictionary<string, List<MethodInfoWrapper>>();
         private readonly object _o = new object();
         private TcpListener _listener;
 
@@ -56,7 +57,7 @@ namespace SocketServer
                 {
                     using (TcpClient client = _listener.AcceptTcpClient())
                     {
-                        var buff = new byte[9600];
+                        var buff = new byte[9000000];
 
                         client.GetStream().Read(buff, 0, buff.Length);
 
@@ -145,18 +146,62 @@ namespace SocketServer
                                 SetKspValue(ParseKspValue(request.Info));
                                 break;
                             case Commands.CallMethod:
-                                var calledObj = GetKspValue(ParseKspValue(request.Info));
 
-                                if (calledObj != null && !calledObj.GetType().IsSimpleKspType())
+                                var method = request.Info.Methods.FirstOrDefault();
+
+                                if (method == null) break;
+
+                                object[] parameters = null;
+
+                                if (method.Parameters != null && method.Parameters.Any())
+                                {
+                                    parameters = method.Parameters.Select(
+                                        x => ConvertValue(x.TypeName, x.Value)).ToArray();
+                                }
+
+                                object method_result;
+
+                                if (method.IsStatic)
                                 {
                                     try
                                     {
-                                        calledObj.CallMethod(request.Info.MethodName);
-                                        LogClient.Instance.Send(string.Format("Method {0} for instance {1} was called succesfully", request.Info.MethodName, calledObj));
+                                        Type t;
+
+                                        if (GetTypeFromLibrary(request.Info.TypeName, out t))
+                                        {
+                                            method_result = parameters != null ? t.CallMethod(method.Name, parameters) : t.CallMethod(method.Name);
+                                            LogClient.Instance.Send(
+                                                string.Format("Method {0} for static instance {1} was called succesfully with parameters {2}",
+                                                    method.Name, t.Name, parameters));
+                                        }
                                     }
                                     catch (Exception ex)
                                     {
-                                        LogClient.Instance.Send(string.Format("Fatal error (call method): {0} {1}", ex.Message, ex.StackTrace));
+                                        LogClient.Instance.Send(string.Format("Fatal error (call method): {0} {1}",
+                                           ex.Message, ex.StackTrace));
+                                    }
+                                }
+                                else
+                                {
+                                    try
+                                    {
+                                        var calledObj = GetKspValue(ParseKspValue(request.Info));
+
+                                        LogClient.Instance.Send(string.Format("CalledObj is {0}",
+                                                calledObj));
+
+                                        if (calledObj != null && !calledObj.GetType().IsSimpleKspType())
+                                        {
+                                            method_result = parameters != null ? calledObj.CallMethod(method.Name, parameters) : calledObj.CallMethod(method.Name);
+                                            LogClient.Instance.Send(
+                                            string.Format("Method {0} for instance {1} was called succesfully",
+                                                method.Name, calledObj));
+                                        }
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        LogClient.Instance.Send(string.Format("Fatal error (call method): {0} {1}",
+                                            ex.Message, ex.StackTrace));
                                     }
                                 }
 
@@ -267,12 +312,12 @@ namespace SocketServer
         {
             try
             {
-                if (!_types.ContainsKey(info.TypeName) && !GetKspType(info.Parent))
+                Type type;
+
+                if (!GetTypeFromLibrary(info.TypeName, out type) && !GetKspType(info.Parent))
                     return null;
 
                 var children = new List<MemberInfoWrapper>();
-
-                var type = _types[info.TypeName];
 
                 var items = type.FieldsAndProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.Static);
 
@@ -280,6 +325,8 @@ namespace SocketServer
                 {
                     children.AddRange(items.Select(x => x.ConvertToWrapper()));
                 }
+
+                children.ForEach(FillMethods);
 
                 return children.OrderBy(x => x.Name).ToList();
             }
@@ -295,9 +342,22 @@ namespace SocketServer
             }
         }
 
+        private void FillMethods(MemberInfoWrapper item)
+        {
+            List<MethodInfoWrapper> t;
+            if (!_methods.TryGetValue(item.TypeName, out t)) return;
+
+            item.Methods = t;
+        }
+
+        private bool GetTypeFromLibrary(string typeName, out Type t)
+        {
+            return _types.TryGetValue(typeName, out t);
+        }
+
         private object GetKspValue(List<MemberInfoWrapper> wrappers, object instance = null, Type parent = null)
         {
-            if (wrappers == null || !wrappers.Any()) return "wrappers is empty";
+            if (wrappers == null || !wrappers.Any()) return instance ?? "wrappers is empty";
 
             var currentWrapper = wrappers.FirstOrDefault();
 
@@ -359,24 +419,15 @@ namespace SocketServer
 
             if (!result) return false;
 
-            string instanceType;
+            string instanceName;
 
-            result = _instantiateTypes.TryGetValue(type.Name, out instanceType);
+            result = _instantiateTypes.TryGetValue(type.Name, out instanceName);
 
             if (!result) return true;
 
-            var instanceField = type.GetField(instanceType);
+            instance = type.Member(instanceName, Flags.StaticPublicDeclaredOnly).Get();
 
-            if (instanceField != null)
-            {
-                instance = instanceField.GetValue(null);
-            }
-
-            var instanceProp = type.GetProperty(instanceType);
-
-            if (instanceProp == null) return true;
-
-            instance = instanceProp.GetValue(null, null);
+            LogClient.Instance.Send(string.Format("Instance name {2} type {0} was loaded sucsefull {1}", t.Name, instance, instanceName));
 
             return true;
         }
@@ -499,12 +550,38 @@ namespace SocketServer
                     externalTypes.ForEach(x => { if (!_types.ContainsKey(x.Name)) { _types.Add(x.Name, x); } });
                 }
 
+                PrepareMethods();
+
                 return _types.Select(x => new MemberInfoWrapper
                 {
                     Name = x.Key,
                     TypeName = x.Key,
                     ItemType = MemberType.Type,
+                    Methods = _methods[x.Key]
                 }).ToList();
+            }
+        }
+
+        private void PrepareMethods()
+        {
+            foreach (var type in _types)
+            {
+                if (_methods.ContainsKey(type.Key)) continue;
+
+                var items = type.Value.Methods(Flags.ExcludeBackingMembers | Flags.InstancePublicDeclaredOnly | Flags.StaticPublicDeclaredOnly)
+                    .Select(
+                        x => new MethodInfoWrapper()
+                        {
+                            Name = x.Name,
+                            IsStatic = x.IsStatic,
+                            Parameters = x.Parameters().Select(y => new MemberInfoWrapper()
+                            {
+                                Name = y.Name,
+                                TypeName = y.ParameterType.Name,
+                            }).ToList()
+                        }).ToList();
+
+                _methods.Add(type.Key, items);
             }
         }
 
@@ -541,6 +618,40 @@ namespace SocketServer
 
             return items;
         }
+
+        private object ConvertValue(string typeName, object o)
+        {
+            try
+            {
+                if (typeName.Equals(typeof(int).Name, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return int.Parse(o.ToString());
+                }
+                if (typeName.Equals(typeof(bool).Name, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return bool.Parse(o.ToString());
+                }
+                if (typeName.Equals(typeof(Single).Name, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return Single.Parse(o.ToString());
+                }
+                if (typeName.Equals(typeof(double).Name, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return double.Parse(o.ToString());
+                }
+                if (typeName.Equals(typeof(string).Name, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return o.ToString();
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                LogClient.Instance.Send(string.Format("(ConvertValue) Fatal error: {0} {1}", ex.Message, ex.StackTrace));
+                return null;
+            }
+        }
+
 
         private object ConvertValue(Type t, object o)
         {

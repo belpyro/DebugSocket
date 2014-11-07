@@ -6,12 +6,12 @@
         xmlns:socketCommon="clr-namespace:SocketCommon;assembly=SocketCommon"
         Title="MainWindow" Height="480" Width="640">
     <Window.Resources>
-        <Style TargetType="{x:Type ListBoxItem}">
+        <Style TargetType="{x:Type TreeViewItem}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsStatic}" Value="True">
                     <Setter Property="TextBlock.FontStyle" Value="Italic"></Setter>
                     <Setter Property="TextBlock.FontWeight" Value="Light"></Setter>
-                    <Setter Property="TextBlock.Foreground" Value="LightBlue"></Setter>
+                    <!--<Setter Property="TextBlock.Foreground" Value="LightBlue"></Setter>-->
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -82,7 +82,7 @@
 
         <TabControl Grid.Column="2" Grid.Row="1">
             <TabItem Name="MethodItem" Header="Methods">
-                <TreeView ItemsSource="{Binding}"/>
+                <TreeView Name="MethodView" ItemsSource="{Binding ElementName=TypeTree, Path=SelectedItem.Tag.Methods}"/>
             </TabItem>
             <TabItem Name="EventItem" Header="Game events">
                 <ListBox Name="EventsBox" ItemsSource="{Binding}">
@@ -120,6 +120,7 @@
             <TextBlock Text="Property" VerticalAlignment="Center"></TextBlock>
             <Rectangle Fill="DarkOrange" Margin="4" Width="24" Height="16"></Rectangle>
             <TextBlock Text="Collection" VerticalAlignment="Center"></TextBlock>
+            <ProgressBar Margin="20 4 0 0" MinWidth="100" MinHeight="16" Name="StatusProgressBar" Orientation="Horizontal" />
         </StatusBar>
 
     </Grid>

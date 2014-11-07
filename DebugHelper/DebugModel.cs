@@ -33,8 +33,8 @@ namespace DebugHelper
             {
                 try
                 {
-                    client.ReceiveBufferSize = 900000;
-                    client.SendBufferSize = 900000;
+                    client.ReceiveBufferSize = 9000000;
+                    client.SendBufferSize = 9000000;
                     client.ReceiveTimeout = 1000;
 
                     client.Connect(IPAddress.Parse("127.0.0.1"), 11000);
