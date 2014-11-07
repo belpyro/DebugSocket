@@ -63,13 +63,16 @@
 
         <ToolBar Grid.Row="0" Grid.Column="2">
             <Button Margin="4" Width="26" Height="26" Click="GetAllTypesButton_OnClick" ToolTip="Get types">
-                <Image Source="Images/All_reports.png"/>
+                <Image Source="Images/class_32xLG.png" Stretch="Fill"/>
             </Button>
-            <Button Margin="4" Width="26" Height="26" Click="MethodsButton_OnClick" ToolTip="Get types">
-                <Image Source="Images/All_reports.png"/>
+            <Button Margin="4" Width="26" Height="26" Click="MethodsButton_OnClick" ToolTip="Get methods">
+                <Image Source="Images/Diagram_32XLG.png" Stretch="Fill"/>
             </Button>
             <Button Margin="4" Width="26" Height="26" Click="EventsButton_OnClick" ToolTip="Get game events">
-                <Image Source="Images/light-32.png"/>
+                <Image Source="Images/lightningBolt_16xLG.png" Stretch="Fill"/>
+            </Button>
+            <Button Margin="4" Width="26" Height="26" Click="RefreshButton_OnClick" ToolTip="Refresh types">
+                <Image Source="Images/refresh-32.png" Stretch="Fill"/>
             </Button>
         </ToolBar>
 

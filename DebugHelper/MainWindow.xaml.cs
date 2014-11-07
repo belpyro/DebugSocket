@@ -292,5 +292,10 @@ namespace DebugHelper
 
             _model.CallMethod(wrapper);
         }
+
+        private void RefreshButton_OnClick(object sender, RoutedEventArgs e)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

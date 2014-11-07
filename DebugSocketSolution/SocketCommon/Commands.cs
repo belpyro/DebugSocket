@@ -13,6 +13,7 @@
         SetValue,
         EventAttach,
         EventDetach,
-        CallMethod
+        CallMethod,
+        Refresh
     }
 }

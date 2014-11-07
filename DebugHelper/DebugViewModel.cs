@@ -84,6 +84,11 @@ namespace DebugHelper
         {
             DebugModel.Instance.ExecuteCommand(wrapper, Commands.CallMethod);
         }
+        
+        public void RefreshTypes()
+        {
+            DebugModel.Instance.ExecuteCommand(null, Commands.Refresh);
+        }
 
         public IEnumerable<MemberInfoWrapper> LoadedTypes { get; private set; }
 

@@ -161,6 +161,8 @@ namespace SocketServer
                                 }
 
                                 break;
+                            case Commands.Refresh:
+                                break;
                             default:
                                 throw new ArgumentOutOfRangeException();
                         }

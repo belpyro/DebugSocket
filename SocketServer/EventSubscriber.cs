@@ -1013,15 +1013,15 @@ namespace SocketServer {
             LogClient.Instance.Send("Event OnScienceRecieved was invoked!!!");
         }
         
-        void OnReputationChanged(float data) {
+        void OnReputationChanged(float data, TransactionReasons data1) {
             LogClient.Instance.Send("Event OnReputationChanged was invoked!!!");
         }
         
-        void OnScienceChanged(float data) {
+        void OnScienceChanged(float data, TransactionReasons data1) {
             LogClient.Instance.Send("Event OnScienceChanged was invoked!!!");
         }
         
-        void OnFundsChanged(double data) {
+        void OnFundsChanged(double data, TransactionReasons data1) {
             LogClient.Instance.Send("Event OnFundsChanged was invoked!!!");
         }
         
